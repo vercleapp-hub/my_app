@@ -1,0 +1,72 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Dr Pay - إيصال الدفع</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>body { font-family: 'Tajawal', sans-serif; background: #f8fafc; }</style>
+</head>
+<body class="p-4 sm:p-8 flex items-center justify-center min-h-screen">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-sm w-full overflow-hidden" id="receipt">
+        <div class="bg-blue-600 p-6 text-center text-white relative">
+            <h1 class="text-3xl font-black tracking-widest mb-1">Dr Pay</h1>
+            <p class="text-blue-200 text-sm font-bold">إيصال معاملة إلكترونية</p>
+        </div>
+        <div class="p-6 space-y-4">
+            <div id="loading" class="text-center text-slate-400 font-bold py-8">جاري استخراج بيانات הפاتورة...</div>
+            <div id="invoice-details" class="hidden space-y-4">
+                <div class="flex justify-between border-b pb-2"><span class="text-slate-500">رقم الإيصال</span><span id="inv-no" class="font-bold text-slate-800 font-mono"></span></div>
+                <div class="flex justify-between border-b pb-2"><span class="text-slate-500">التاريخ</span><span id="inv-date" class="font-bold text-slate-800 text-sm"></span></div>
+                <div class="flex justify-between border-b pb-2"><span class="text-slate-500">الخدمة</span><span id="inv-srv" class="font-bold text-slate-800"></span></div>
+                <div class="flex justify-between border-b pb-2"><span class="text-slate-500">رقم العميل</span><span id="inv-phone" class="font-bold text-slate-800 font-mono"></span></div>
+                <div class="flex justify-between border-b pb-2"><span class="text-slate-500">الحالة</span><span id="inv-status" class="font-bold text-emerald-600">ناجحة</span></div>
+                <div class="mt-6 p-4 bg-slate-50 rounded-xl flex justify-between items-center border border-slate-100">
+                    <span class="text-slate-600 font-bold">المبلغ الإجمالي</span>
+                    <span class="text-2xl font-black text-blue-600 font-mono"><span id="inv-total"></span> <span class="text-sm">ج.م</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="fixed bottom-6 w-full flex justify-center gap-4 px-4 hidden" id="actions">
+        <button onclick="window.print()" class="bg-slate-800 text-white font-bold py-3 px-6 rounded-full shadow-lg flex items-center gap-2"><i data-lucide="printer"></i> طباعة</button>
+        <button onclick="share()" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg flex items-center gap-2"><i data-lucide="share-2"></i> مشاركة</button>
+    </div>
+    <script>
+        lucide.createIcons();
+        const urlParams = new URLSearchParams(window.location.search);
+        const invId = urlParams.get('id');
+        if(!invId) document.getElementById('loading').textContent = 'رقم الإيصال غير صالح';
+        else fetchInvoice();
+
+        async function fetchInvoice() {
+            try {
+                const res = await fetch(`/api?action=transactions`);
+                const data = await res.json();
+                if(data.success) {
+                    const tx = data.transactions.find(t => t.invoice_no === invId);
+                    if(tx) {
+                        document.getElementById('loading').classList.add('hidden');
+                        document.getElementById('invoice-details').classList.remove('hidden');
+                        document.getElementById('actions').classList.remove('hidden');
+                        
+                        document.getElementById('inv-no').textContent = tx.invoice_no;
+                        document.getElementById('inv-date').textContent = new Date(tx.created_at).toLocaleString('ar-EG');
+                        document.getElementById('inv-srv').textContent = tx.service_name;
+                        document.getElementById('inv-phone').textContent = tx.customer_phone;
+                        document.getElementById('inv-total').textContent = tx.total;
+                        document.getElementById('inv-status').textContent = tx.status === 'paid' ? 'معتمدة' : (tx.status === 'pending' ? 'بانتظار التأكيد' : 'مرفوضة');
+                        if(tx.status !== 'paid') document.getElementById('inv-status').className = 'font-bold text-yellow-600';
+                    } else document.getElementById('loading').textContent = 'لم يتم العثور على الفاتورة';
+                }
+            } catch(e) { document.getElementById('loading').textContent = 'خطأ في الاتصال'; }
+        }
+        function share() {
+            if (navigator.share) navigator.share({ title: 'إيصال دفع Dr Pay', text: `إيصال معاملة رقم ${invId}`, url: window.location.href });
+            else prompt('انسخ الرابط للمشاركة:', window.location.href);
+        }
+    </script>
+</body>
+</html>
+
