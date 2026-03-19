@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Dr Pay Elite - لوحة تحكم الإدارة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; background: #0f172a; color: #f8fafc; }
+        .sidebar-link { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.75rem; color: #94a3b8; transition: all 0.2s; }
+        .sidebar-link:hover { background: #1e293b; color: #f8fafc; }
+        .sidebar-link.active { background: #3b82f6; color: #ffffff; font-weight: bold; }
+        .data-table th { background: #1e293b; padding: 1rem; text-align: right; color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+        .data-table td { padding: 1rem; border-bottom: 1px solid #1e293b; color: #e2e8f0; font-size: 0.875rem; }
+        .data-table tr:hover { background: #1e293b; }
+        .btn-action { padding: 0.35rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: bold; display: inline-flex; align-items: center; gap: 0.25rem; transition: all 0.2s; }
+        .card-stat { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; border-radius: 1rem; padding: 1.5rem; position: relative; overflow: hidden; }
+        .hidden-view { display: none !important; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden hidden" id="admin-body">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 border-l border-slate-800 flex flex-col h-full flex-shrink-0 relative z-20">
+        <div class="p-6 border-b border-slate-800 flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i data-lucide="zap" class="text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-xl text-white tracking-tight leading-none">Dr Pay</h1>
+                <p class="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Elite Control</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto p-4 space-y-1" id="sidebar-nav">
+            <button onclick="switchView('dashboard')" class="w-full sidebar-link active" id="nav-dashboard"><i data-lucide="layout-dashboard" class="w-5 h-5"></i><span>الرئيسية</span></button>
+            <div class="text-[10px] uppercase font-bold text-slate-500 mt-6 mb-2 px-4 tracking-wider">الإدارة المالية</div>
+            <button onclick="switchView('transactions')" class="w-full sidebar-link" id="nav-transactions"><i data-lucide="activity" class="w-5 h-5"></i><span>العمليات المالية</span></button>
+            <button onclick="switchView('deposits')" class="w-full sidebar-link" id="nav-deposits"><i data-lucide="arrow-down-circle" class="w-5 h-5"></i><span>طلبات الشحن</span></button>
+            <div class="text-[10px] uppercase font-bold text-slate-500 mt-6 mb-2 px-4 tracking-wider">الشبكة والمستخدمين</div>
+            <button onclick="switchView('users')" class="w-full sidebar-link" id="nav-users"><i data-lucide="users" class="w-5 h-5"></i><span>المستخدمين</span></button>
+            <button onclick="switchView('branches')" class="w-full sidebar-link" id="nav-branches"><i data-lucide="building-2" class="w-5 h-5"></i><span>الفروع والموظفين</span></button>
+            <div class="text-[10px] uppercase font-bold text-slate-500 mt-6 mb-2 px-4 tracking-wider">إعدادات النظام</div>
+            <button onclick="switchView('services')" class="w-full sidebar-link" id="nav-services"><i data-lucide="grid" class="w-5 h-5"></i><span>الخدمات</span></button>
+            <button onclick="switchView('methods')" class="w-full sidebar-link" id="nav-methods"><i data-lucide="credit-card" class="w-5 h-5"></i><span>طرق الإيداع</span></button>
+            <button onclick="switchView('settings')" class="w-full sidebar-link" id="nav-settings"><i data-lucide="settings" class="w-5 h-5"></i><span>الإعدادات الشاملة</span></button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800">
+            <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-xl transition font-bold text-sm">
+                <i data-lucide="log-out" class="w-4 h-4"></i> تسجيل الخروج
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full bg-[#0b1121] overflow-hidden relative">
+        <header class="h-16 lg:h-20 border-b border-slate-800 flex items-center justify-between px-8 shrink-0 bg-slate-900/50 backdrop-blur-md">
+            <div class="flex items-center gap-4">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2" id="header-title">الرئيسية</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="px-4 py-1.5 bg-slate-800 border border-slate-700 rounded-full text-xs font-mono text-emerald-400 flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div> System Online
+                </div>
+                <div class="text-right hidden sm:block">
+                    <div class="text-sm font-bold text-white" id="admin-name">Admin Name</div>
+                    <div class="text-xs text-slate-400">فريق الإدارة</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 relative">
+            
+            <!-- 1. DASHBOARD OVERVIEW -->
+            <section id="view-dashboard" class="space-y-6">
+                <!-- Stat Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="card-stat">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
+                        <div class="text-slate-400 text-sm font-bold mb-2 flex justify-between">إجمالي المستخدمين <i data-lucide="users" class="w-4 h-4 text-blue-400"></i></div>
+                        <div class="text-3xl font-black text-white" id="stat-users">--</div>
+                    </div>
+                    <div class="card-stat">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl"></div>
+                        <div class="text-slate-400 text-sm font-bold mb-2 flex justify-between">حجم الإيرادات (EGP) <i data-lucide="dollar-sign" class="w-4 h-4 text-emerald-400"></i></div>
+                        <div class="text-3xl font-black text-white tracking-widest" id="stat-revenue">--</div>
+                    </div>
+                    <div class="card-stat">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl"></div>
+                        <div class="text-slate-400 text-sm font-bold mb-2 flex justify-between">إجمالي العمليات <i data-lucide="activity" class="w-4 h-4 text-purple-400"></i></div>
+                        <div class="text-3xl font-black text-white" id="stat-txs">--</div>
+                    </div>
+                    <div class="card-stat">
+                        <div class="absolute -right-4 -top-4 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl"></div>
+                        <div class="text-slate-400 text-sm font-bold mb-2 flex justify-between">عمليات اليوم <i data-lucide="calendar" class="w-4 h-4 text-orange-400"></i></div>
+                        <div class="text-3xl font-black text-white" id="stat-daily">--</div>
+                    </div>
+                </div>
+
+                <!-- Recent Logs (Preview) -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                    <h3 class="font-bold text-lg mb-4 text-white flex items-center gap-2"><i data-lucide="clock" class="text-blue-500"></i> آخر نشاطات النظام</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full data-table text-right">
+                            <thead><tr><th>الوقت</th><th>المستخدم</th><th>الإجراء / التفاصيل</th></tr></thead>
+                            <tbody id="dash-logs-tbody"><tr><td colspan="3" class="text-center">جاري التحميل...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. TRANSACTIONS -->
+            <section id="view-transactions" class="hidden-view">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 flex flex-wrap gap-4 justify-between items-center bg-slate-800/50">
+                        <input type="text" id="search-tx" onkeyup="filterTable('tx-tbody', this.value)" placeholder="البحث برقم المرجع أو الاسم..." class="bg-slate-950 border border-slate-700 text-white text-sm rounded-lg px-4 py-2 w-full md:w-64 focus:outline-none focus:border-blue-500">
+                        <div class="flex gap-2">
+                            <span class="text-xs text-slate-400 flex items-center gap-1 font-mono"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> مدفوع</span>
+                            <span class="text-xs text-slate-400 flex items-center gap-1 font-mono"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> معلق</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full data-table">
+                            <thead><tr><th>Invoice</th><th>العميل والموبايل</th><th>الخدمة والمرجع</th><th>القيمة</th><th>الحالة</th><th>إجراءات الإدارة</th></tr></thead>
+                            <tbody id="tx-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. DEPOSITS -->
+            <section id="view-deposits" class="hidden-view">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                    <div class="p-4 bg-teal-900/30 border-b border-teal-800/50 text-teal-400 text-sm font-bold flex items-center gap-2">
+                        <i data-lucide="shield-alert"></i> مراجعة واعتماد طلبات شحن محافظ التجار بناءً على إشعارات البنك.
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full data-table">
+                            <thead><tr><th>التاريخ</th><th>التاجر</th><th>الطريقة والمرجع</th><th>المبلغ المحول</th><th>الحالة</th><th>قرار الإدارة</th></tr></thead>
+                            <tbody id="dep-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. USERS -->
+            <section id="view-users" class="hidden-view">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
+                        <input type="text" id="search-users" onkeyup="filterTable('users-tbody', this.value)" placeholder="البحث برقم الموبايل أو الاسم..." class="bg-slate-950 border border-slate-700 text-white text-sm rounded-lg px-4 py-2 w-full md:w-64 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full data-table">
+                            <thead><tr><th>ID</th><th>اسم التاجر/المستخدم</th><th>الهاتف</th><th>رصيد المحفظة</th><th>الصلاحية</th><th>تعديل الرصيد / الإجراء</th></tr></thead>
+                            <tbody id="users-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. BRANCHES & EMPLOYEES -->
+            <section id="view-branches" class="hidden-view space-y-6">
+                <!-- Branches -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                        <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="building"></i> هيكل الفروع</h3>
+                        <button onclick="editBranch()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg">+ فرع جديد</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full data-table">
+                            <thead><tr><th>اسم الفرع</th><th>الموقع / العنوان</th><th>تاريخ الإضافة</th><th>حذف</th></tr></thead>
+                            <tbody id="branches-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Employees -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                        <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="user-plus"></i> الموظفين</h3>
+                        <button onclick="editEmployee()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-lg">+ إضافة موظف</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full data-table">
+                            <thead><tr><th>الموظف</th><th>الهاتف</th><th>الفرع</th><th>الصلاحية</th><th>حذف</th></tr></thead>
+                            <tbody id="employees-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. SERVICES -->
+            <section id="view-services" class="hidden-view">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                        <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="grid"></i> التحكم المركزي في الخدمات</h3>
+                        <button onclick="editService()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1"><i data-lucide="plus" class="w-4 h-4"></i> إضافة خدمة</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full data-table">
+                            <thead><tr><th>اسم الخدمة</th><th>الشركة (Vendor)</th><th>السعر (EGP)</th><th>التعديل / الحذف</th></tr></thead>
+                            <tbody id="services-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. METHODS -->
+            <section id="view-methods" class="hidden-view">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                        <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="credit-card"></i> حسابات ومحافظ الإيداع</h3>
+                        <button onclick="editMethod()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg">+ إضافة طريقة</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full data-table">
+                            <thead><tr><th>البنك / المحفظة</th><th>رقم الحساب أو الموبايل</th><th>ملاحظات</th><th>الحالة</th><th>حذف</th></tr></thead>
+                            <tbody id="methods-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 8. SETTINGS -->
+            <section id="view-settings" class="hidden-view">
+                <div class="max-w-xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden p-6 space-y-6">
+                    <h3 class="font-bold text-xl text-white mb-2 pb-4 border-b border-slate-800">إعدادات النظام (System Config)</h3>
+                    <form id="settings-form" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-1">اسم النظام</label>
+                            <input type="text" id="set-name" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:border-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-1">العملة الافتراضية</label>
+                            <input type="text" id="set-currency" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:border-blue-500 outline-none" placeholder="EGP">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-400 mb-1">نسبة الرسوم الافتراضية للتحويلات (%)</label>
+                            <input type="number" step="0.1" id="set-fees" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:border-blue-500 outline-none">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 mt-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all">حفظ الإعدادات</button>
+                        <div id="set-res" class="text-sm font-bold text-center mt-2 text-emerald-400 hidden">تم حفظ الإعدادات بنجاح</div>
+                    </form>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        let currentUser = null;
+        let branchesList = [];
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            const userStr = localStorage.getItem('drpay_user');
+            if(!userStr) { window.location.href = 'login.html'; return; }
+            try {
+                currentUser = JSON.parse(userStr);
+                if(currentUser.role !== 'admin' && currentUser.role !== 'employee') { window.location.href = 'index.html'; return; }
+                document.getElementById('admin-body').classList.remove('hidden');
+                document.getElementById('admin-name').textContent = currentUser.name;
+                loadDashboard();
+            } catch(e) { window.location.href = 'login.html'; }
+        });
+
+        function logout() {
+            localStorage.removeItem('drpay_user');
+            localStorage.removeItem('drpay_token');
+            window.location.href = 'login.html';
+        }
+
+        const views = ['dashboard', 'transactions', 'deposits', 'users', 'branches', 'services', 'methods', 'settings'];
+        const viewTitles = {
+            'dashboard':'لوحة الإحصائيات (Overview)', 'transactions':'العمليات المالية (Transactions)', 
+            'deposits':'اعتمادات الشحن (Deposits)', 'users':'إدارة شبكة التجار والمستخدمين', 
+            'branches':'إدارة الفروع (Branches & Staff)', 'services':'هندسة الخدمات', 
+            'methods':'بوابات الإيداع المتاحة', 'settings':'تكوين النظام (System Config)'
+        };
+
+        function switchView(vid) {
+            views.forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden-view');
+                document.getElementById(`nav-${v}`).classList.remove('active');
+            });
+            document.getElementById(`view-${vid}`).classList.remove('hidden-view');
+            document.getElementById(`nav-${vid}`).classList.add('active');
+            document.getElementById('header-title').textContent = viewTitles[vid] || vid;
+            
+            if(vid === 'dashboard') loadDashboard();
+            if(vid === 'transactions') loadTransactions();
+            if(vid === 'deposits') loadDeposits();
+            if(vid === 'users') loadUsers();
+            if(vid === 'branches') { loadBranches(); loadEmployees(); }
+            if(vid === 'services') loadServices();
+            if(vid === 'methods') loadMethods();
+            if(vid === 'settings') loadSettings();
+        }
+
+        /* --- Global Table Filter Tool --- */
+        function filterTable(tableId, query) {
+            query = query.toLowerCase();
+            const rows = document.getElementById(tableId).getElementsByTagName('tr');
+            for(let i=0; i<rows.length; i++) {
+                const text = rows[i].textContent.toLowerCase();
+                rows[i].style.display = text.includes(query) ? '' : 'none';
+            }
+        }
+
+        /* ----- 1. DASHBOARD ----- */
+        async function loadDashboard() {
+            try {
+                const res = await fetch('/api/admin/stats'); const data = await res.json();
+                if(data.success) {
+                    document.getElementById('stat-users').textContent = data.stats.totalUsers;
+                    document.getElementById('stat-revenue').textContent = data.stats.revenue.toLocaleString();
+                    document.getElementById('stat-txs').textContent = data.stats.totalTransactions;
+                    document.getElementById('stat-daily').textContent = data.stats.dailyTx;
+                }
+                const logsRes = await fetch('/api/logs'); const logsData = await logsRes.json();
+                const tbody = document.getElementById('dash-logs-tbody'); tbody.innerHTML = '';
+                if(logsData.success) {
+                    logsData.logs.slice(0, 10).forEach(log => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td class="font-mono text-xs text-slate-500" dir="ltr">${new Date(log.created_at).toLocaleString('en-GB')}</td>
+                                <td class="font-bold text-slate-300 text-xs">${log.custom_users?.name || '-'}</td>
+                                <td>
+                                    <span class="bg-blue-900/40 text-blue-400 px-2 py-1 rounded text-[10px] font-bold block mb-1 w-fit">${log.action}</span>
+                                    <span class="text-[11px] text-slate-400">${log.details}</span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch(e) {}
+        }
+
+        /* ----- 2. TRANSACTIONS ----- */
+        async function loadTransactions() {
+            const tbody = document.getElementById('tx-tbody'); tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">جاري التحميل...</td></tr>';
+            try {
+                const res = await fetch('/api/admin/transactions'); const data = await res.json();
+                if(data.success) {
+                    tbody.innerHTML = '';
+                    data.transactions.forEach(tx => {
+                        let st = tx.status === 'paid' ? '<span class="text-emerald-500 font-bold bg-emerald-500/10 px-2 py-1 rounded">مدفوع</span>' : 
+                               (tx.status === 'pending' ? '<span class="text-yellow-500 font-bold bg-yellow-500/10 px-2 py-1 rounded">معلق</span>' :
+                               '<span class="text-red-500 font-bold bg-red-500/10 px-2 py-1 rounded">مرفوض</span>');
+                        
+                        let acts = tx.status === 'pending' ? `
+                            <button onclick="approveTx('${tx.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white btn-action">اعتماد</button>
+                            <button onclick="rejectTx('${tx.id}')" class="bg-orange-600 hover:bg-orange-500 text-white btn-action">رفض</button>
+                        ` : `<a href="invoice.html?id=${tx.invoice_no}" target="_blank" class="bg-slate-800 text-white btn-action">إيصال</a>`;
+                        
+                        acts += `<button onclick="deleteTx('${tx.id}')" class="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white btn-action mr-2">مسح نهائي</button>`;
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td class="font-mono text-xs text-slate-400">${tx.invoice_no}</td>
+                                <td><div class="font-bold text-white">${tx.customer_name}</div><div class="text-xs text-slate-500 font-mono">${tx.customer_phone}</div></td>
+                                <td><div class="text-xs text-blue-400">${tx.service_name}</div><div class="text-xs font-mono">${tx.service_data?.ref_number || tx.invoice_no}</div></td>
+                                <td class="font-black tracking-wider text-emerald-400">${tx.total}</td>
+                                <td>${st}</td>
+                                <td class="whitespace-nowrap">${acts}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch(e) {}
+        }
+        async function approveTx(id) { if(confirm('اعتماد القطع؟')) { await fetch('/api/approve', {method: 'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({transaction_id: id, status:'paid'})}); loadTransactions(); } }
+        async function rejectTx(id) { if(confirm('رفض؟')) { await fetch('/api/approve', {method: 'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({transaction_id: id, status:'rejected'})}); loadTransactions(); } }
+        async function deleteTx(id) { if(confirm('حذف نهائي للعملية من جذورها؟')) { await fetch('/api/admin/transactions', {method: 'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})}); loadTransactions(); loadDashboard(); } }
+
+        /* ----- 3. DEPOSITS ----- */
+        async function loadDeposits() {
+            const tbody = document.getElementById('dep-tbody'); tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">جاري التحميل...</td></tr>';
+            try {
+                const res = await fetch('/api/admin/deposits'); const data = await res.json();
+                if(data.success) {
+                    tbody.innerHTML = '';
+                    data.requests.forEach(req => {
+                        let st = req.status === 'approved' ? '<span class="text-emerald-500 font-bold bg-emerald-500/10 px-2 py-1 rounded">تم الإضافة</span>' : 
+                               (req.status === 'pending' ? '<span class="text-blue-400 font-bold bg-blue-500/10 px-2 py-1 rounded">يحتاج مراجعة</span>' :
+                               '<span class="text-red-500 font-bold bg-red-500/10 px-2 py-1 rounded">مرفوض</span>');
+                        
+                        let acts = req.status === 'pending' ? `
+                            <button onclick="resolveDep('${req.id}','approved')" class="bg-emerald-600 hover:bg-emerald-500 text-white btn-action">إيداع بالمحفظة</button>
+                            <button onclick="resolveDep('${req.id}','rejected')" class="bg-red-600/20 text-red-500 hover:bg-red-500 hover:text-white btn-action mr-1">رفض الطلب</button>
+                        ` : '-';
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td class="font-mono text-xs text-slate-500" dir="ltr">${new Date(req.created_at).toLocaleString('en-GB')}</td>
+                                <td><div class="font-bold text-white">${req.custom_users?.name}</div><div class="text-xs text-slate-500 font-mono">${req.custom_users?.phone}</div></td>
+                                <td><div class="text-xs">${req.deposit_methods?.name}</div><div class="text-xs font-mono text-purple-400 tracking-wider font-bold">${req.transfer_ref || 'بدون مرجع'}</div></td>
+                                <td class="font-black tracking-wider text-xl text-emerald-400">${parseFloat(req.amount).toFixed(2)}</td>
+                                <td>${st}</td>
+                                <td class="whitespace-nowrap">${acts}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch(e) {}
+        }
+        async function resolveDep(id, st) {
+            if(!confirm(st==='approved'?'هل المرجع صحيح من البنك وجاهز لضخ الرصيد؟':'رفض؟')) return;
+            await fetch('/api/admin/deposits', {method: 'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, status:st})}); loadDeposits();
+        }
+
+        /* ----- 4. USERS ----- */
+        async function loadUsers() {
+            const tbody = document.getElementById('users-tbody');
+            try {
+                const res = await fetch('/api/admin/users'); const data = await res.json();
+                if(data.success) {
+                    tbody.innerHTML = '';
+                    data.users.forEach(u => {
+                        let st = u.status === 'active' ? '<span class="text-emerald-500"><i data-lucide="check-circle" class="w-4 h-4 inline"></i></span>' : '<span class="text-red-500">موقوف</span>';
+                        let bal = u.wallets ? u.wallets.balance : 0;
+                        tbody.innerHTML += `
+                            <tr>
+                                <td class="font-mono text-xs text-slate-500">${u.id}</td>
+                                <td><div class="font-bold text-white">${u.name}</div><div class="text-xs text-slate-500 font-mono">${u.phone}</div></td>
+                                <td class="font-mono text-xs text-slate-500">${u.email || '-'}</td>
+                                <td class="font-black text-amber-400 tracking-wider">${parseFloat(bal).toFixed(2)}</td>
+                                <td class="uppercase text-[10px] font-bold text-slate-400">${u.role}</td>
+                                <td class="flex items-center gap-2">
+                                    ${st}
+                                    <button onclick="blockU('${u.id}','${u.status==='active'?'blocked':'active'}')" class="btn-action bg-slate-800 hover:bg-slate-700 text-white text-[10px] mr-2">تبديل الحالة</button>
+                                    <button onclick="modBalance('${u.id}', '${u.name}')" class="btn-action bg-teal-600/30 text-teal-400 hover:bg-teal-500 hover:text-white">إضافة/خصم مباشر</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    lucide.createIcons();
+                }
+            } catch(e) {}
+        }
+        async function blockU(id, ns) { await fetch('/api/admin/users', {method: 'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, status:ns})}); loadUsers(); }
+        async function modBalance(id, name) {
+            const val = prompt(`إضافة/خصم رصيد لـ (${name})\n- اكتب الرقم بالموجب للإضافة.\n- اكتب الرقم بالسالب للخصم.`);
+            if(!val || isNaN(val)) return;
+            // The existing /api/wallet takes amounts, positive or negative
+            await fetch('/api/wallet', {method: 'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user_id: id, amount: val})});
+            loadUsers();
+        }
+
+        /* ----- 5. BRANCHES & EMPLOYEES ----- */
+        async function loadBranches() {
+            const tb = document.getElementById('branches-tbody');
+            const res = await fetch('/api/admin/branches'); const data = await res.json();
+            if(data.success) {
+                branchesList = data.branches;
+                tb.innerHTML = '';
+                branchesList.forEach(b => {
+                    tb.innerHTML += `<tr><td class="font-bold text-white">${b.name}</td><td class="text-slate-400 text-xs">${b.location}</td><td class="font-mono text-xs text-slate-600">${b.created_at.split('T')[0]}</td><td><button onclick="delB('${b.id}')" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`;
+                });
+                lucide.createIcons();
+            }
+        }
+        async function editBranch() { const n=prompt('الاسم:'); if(!n)return; const l=prompt('الموقع:'); await fetch('/api/admin/branches', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:n, location:l})}); loadBranches(); }
+        async function delB(id) { if(!confirm('حذف؟'))return; await fetch('/api/admin/branches', {method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})}); loadBranches(); loadEmployees(); }
+
+        async function loadEmployees() {
+            const tb = document.getElementById('employees-tbody');
+            const res = await fetch('/api/admin/employees'); const data = await res.json();
+            if(data.success) {
+                tb.innerHTML = '';
+                data.employees.forEach(e => {
+                    tb.innerHTML += `<tr><td class="font-bold text-white">${e.name}</td><td class="font-mono text-xs text-slate-400">${e.phone}</td><td class="text-xs text-blue-400">${e.branches?.name||'-'}</td><td class="text-xs uppercase">${e.role}</td><td><button onclick="delE('${e.id}')" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`;
+                });
+                lucide.createIcons();
+            }
+        }
+        async function editEmployee() { const n=prompt('الاسم:'); if(!n)return; const p=prompt('الهاتف:'); const bid=prompt('ID الفرع:'); await fetch('/api/admin/employees', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:n, phone:p, branch_id:bid, role:'employee'})}); loadEmployees(); }
+        async function delE(id) { if(!confirm('حذف؟'))return; await fetch('/api/admin/employees', {method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})}); loadEmployees(); }
+
+        /* ----- 6. SERVICES ----- */
+        async function loadServices() {
+            const tb = document.getElementById('services-tbody');
+            const res = await fetch('/api/admin/services'); const data = await res.json();
+            if(data.success) {
+                tb.innerHTML = '';
+                data.services.forEach(s => {
+                    tb.innerHTML += `<tr><td class="font-bold text-white">${s.name}</td><td class="text-xs text-slate-400">${s.company||'-'}</td><td class="font-black text-emerald-400">${s.price}</td><td class="space-x-reverse space-x-2"><button onclick="delS('${s.id}')" class="btn-action bg-red-600/20 text-red-500"><i data-lucide="trash" class="w-4 h-4"></i></button></td></tr>`;
+                });
+                lucide.createIcons();
+            }
+        }
+        async function editService() { const n=prompt('اسم الخدمة:'); if(!n)return; const p=prompt('السعر:'); await fetch('/api/admin/services', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:n, price:p})}); loadServices(); }
+        async function delS(id) { if(!confirm('حذف؟'))return; await fetch('/api/admin/services', {method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})}); loadServices(); }
+
+        /* ----- 7. METHODS ----- */
+        async function loadMethods() {
+            const tb = document.getElementById('methods-tbody');
+            const res = await fetch('/api/admin/deposit_methods'); const data = await res.json();
+            if(data.success) {
+                tb.innerHTML = '';
+                data.methods.forEach(m => {
+                    tb.innerHTML += `<tr><td class="font-bold text-white">${m.name}</td><td class="font-mono text-purple-400 font-bold">${m.account_number}</td><td class="text-xs text-slate-500">${m.details||'-'}</td><td>${m.is_active?'<span class="text-emerald-500 text-xs">متاح</span>':'<span class="text-red-500 text-xs">معطل</span>'}</td><td><button onclick="delM('${m.id}')" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td></tr>`;
+                });
+                lucide.createIcons();
+            }
+        }
+        async function editMethod() { const n=prompt('النوع:'); if(!n)return; const a=prompt('الرقم/الحساب:'); await fetch('/api/admin/deposit_methods', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:n, account_number:a, is_active:true})}); loadMethods(); }
+        async function delM(id) { if(!confirm('حذف؟'))return; await fetch('/api/admin/deposit_methods', {method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})}); loadMethods(); }
+
+        /* ----- 8. SETTINGS ----- */
+        async function loadSettings() {
+            const res = await fetch('/api/admin/settings'); const data = await res.json();
+            if(data.success && data.settings) {
+                document.getElementById('set-name').value = data.settings.system_name || 'Dr Pay';
+                document.getElementById('set-currency').value = data.settings.currency || 'EGP';
+                document.getElementById('set-fees').value = data.settings.fees_percentage || '0';
+            }
+        }
+        document.getElementById('settings-form').addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const payload = { system_name: document.getElementById('set-name').value, currency: document.getElementById('set-currency').value, fees_percentage: document.getElementById('set-fees').value };
+            const res = await fetch('/api/admin/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({settings: payload})});
+            if(res.ok) { document.getElementById('set-res').classList.remove('hidden'); setTimeout(()=>document.getElementById('set-res').classList.add('hidden'), 3000); }
+        });
+    </script>
+</body>
+</html>
