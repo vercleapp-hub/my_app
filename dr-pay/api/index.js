@@ -23,15 +23,17 @@ export default async function handler(req, res) {
 
   try {
     if (endpoint === 'login' && method === 'POST') {
-      const { email, password } = req.body;
-      const { data: user } = await supabase.from('custom_users').select('*').eq('email', email).single();
+      const { identifier, password } = req.body;
+      const { data: user } = await supabase.from('custom_users').select('*').or(`email.eq.${identifier},phone.eq.${identifier}`).single();
       if (!user) {
-        if (email === 'admin@drpay.com' && password === 'admin') {
-          const { data: newUser, error } = await supabase.from('custom_users').insert({ name: 'الإدارة', phone: '0000', email, password, role: 'admin' }).select().single();
-          if (error) throw error;
-          return res.status(200).json({ success: true, user: newUser, token: 'admin-token' });
+        if (identifier === 'admin@drpay.com' || identifier === '0000') {
+          if (password === 'admin') {
+              const { data: newUser, error } = await supabase.from('custom_users').insert({ name: 'الإدارة', phone: '0000', email: 'admin@drpay.com', password, role: 'admin' }).select().single();
+              if (error) throw error;
+              return res.status(200).json({ success: true, user: newUser, token: 'admin-token' });
+          }
         }
-        return res.status(401).json({ error: 'عفواً، بيانات الدخول غير صحيحة' });
+        return res.status(401).json({ error: 'عفواً، الهاتف أو كلمة المرور غير صحيحة' });
       }
       if (user.password !== password) return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
       if (user.status !== 'active') return res.status(403).json({ error: 'حسابك محظور من الإدارة' });
@@ -43,11 +45,14 @@ export default async function handler(req, res) {
     }
 
     if (endpoint === 'register' && method === 'POST') {
-      const { name, phone, email, password } = req.body;
-      const { data: existing } = await supabase.from('custom_users').select('id').or(`email.eq.${email},phone.eq.${phone}`).single();
-      if (existing) return res.status(400).json({ error: 'البريد الإلكتروني أو الهاتف مسجل بالفعل' });
+      const { name, phone, email, password, national_id, address, id_front_image, id_back_image } = req.body;
+      const { data: existing } = await supabase.from('custom_users').select('id').or(`email.eq.${email},phone.eq.${phone},national_id.eq.${national_id}`).single();
+      if (existing) return res.status(400).json({ error: 'رقم الهاتف أو الرقم القومي مسجل من قبل في النظام' });
       
-      const { data: user, error } = await supabase.from('custom_users').insert({ name, phone, email, password, role: 'user' }).select().single();
+      const { data: user, error } = await supabase.from('custom_users').insert({ 
+          name, phone, email, password, role: 'user',
+          national_id, address, id_front_image, id_back_image
+      }).select().single();
       if (error) throw error;
       
       const token = crypto.randomUUID ? crypto.randomUUID() : 'session-'+Date.now();
