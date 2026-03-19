@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Dr Pay - لوحة تحكم الإدارة الشاملة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>body { font-family: 'Tajawal', sans-serif; background: #f1f5f9; }</style>
+</head>
+<body class="p-4 md:p-8 hidden" id="admin-body">
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm mb-6 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                    <i data-lucide="shield" class="text-blue-600"></i> لوحة الإدارة - Dr Pay
+                </h1>
+                <p class="text-slate-500 font-medium mt-1">التحكم الكامل في النظام، المستخدمين، الأرصدة والخدمات</p>
+            </div>
+            <div class="flex gap-3 items-center">
+                <span id="admin-greeting" class="text-sm font-bold text-slate-600 ml-4 hidden md:inline-block"></span>
+                <button onclick="logout()" class="text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg text-sm font-bold transition flex items-center gap-1"><i data-lucide="log-out" class="w-4 h-4"></i> خروج</button>
+            </div>
+        </header>
+
+        <!-- Dynamic Tabs -->
+        <div class="flex flex-wrap gap-2 mb-6 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+            <button onclick="switchTab('transactions')" id="tab-transactions" class="flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition bg-blue-50 text-blue-600"><i data-lucide="activity" class="w-4 h-4"></i> العمليات</button>
+            <button onclick="switchTab('deposits')" id="tab-deposits" class="flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition text-slate-500 hover:bg-slate-50"><i data-lucide="arrow-down-circle" class="w-4 h-4"></i> طلبات الشحن</button>
+            <button onclick="switchTab('users')" id="tab-users" class="flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition text-slate-500 hover:bg-slate-50"><i data-lucide="users" class="w-4 h-4"></i> المستخدمين</button>
+            <button onclick="switchTab('services')" id="tab-services" class="flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition text-slate-500 hover:bg-slate-50"><i data-lucide="grid" class="w-4 h-4"></i> الخدمات</button>
+            <button onclick="switchTab('methods')" id="tab-methods" class="flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition text-slate-500 hover:bg-slate-50"><i data-lucide="credit-card" class="w-4 h-4"></i> طرق الإيداع</button>
+            <button onclick="switchTab('logs')" id="tab-logs" class="flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition text-slate-500 hover:bg-slate-50"><i data-lucide="file-clock" class="w-4 h-4"></i> سجل النظام</button>
+        </div>
+
+        <!-- 1. TRANSACTIONS VIEW -->
+        <div id="view-transactions" class="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-right">
+                    <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-xs">
+                        <tr><th class="p-5">الفاتورة</th><th class="p-5">العميل</th><th class="p-5">الخدمة</th><th class="p-5">المبلغ</th><th class="p-5">الحالة</th><th class="p-5 text-center">أدوات</th></tr>
+                    </thead>
+                    <tbody id="tx-tbody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 2. DEPOSITS VIEW -->
+        <div id="view-deposits" class="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100 hidden">
+            <div class="p-4 bg-emerald-50 border-b border-emerald-100 text-emerald-800 font-bold text-sm">طلبات شحن المحافظ من التجّار (تحتاج مراجعة الرصيد البنكي قبل الاعتماد)</div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-right">
+                    <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-xs">
+                        <tr><th class="p-5">التاريخ</th><th class="p-5">التاجر</th><th class="p-5">طريقة التحويل</th><th class="p-5">رقم التحويل/المرجع</th><th class="p-5">المبلغ</th><th class="p-5">الحالة</th><th class="p-5 text-center">إجراء</th></tr>
+                    </thead>
+                    <tbody id="dep-tbody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. USERS VIEW -->
+        <div id="view-users" class="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100 hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-right">
+                    <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-xs">
+                        <tr><th class="p-5">ID</th><th class="p-5">الاسم</th><th class="p-5">الهاتف</th><th class="p-5">رصيد المحفظة</th><th class="p-5">الصلاحية</th><th class="p-5">الحالة</th><th class="p-5 text-center">الإجراءات</th></tr>
+                    </thead>
+                    <tbody id="users-tbody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. SERVICES VIEW -->
+        <div id="view-services" class="hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                <div class="p-5 bg-blue-50 border-b border-blue-100 flex justify-between items-center">
+                    <h3 class="font-bold text-blue-800">الخدمات المتاحة للتجار</h3>
+                    <button onclick="editService()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-sm">+ أضف خدمة جديدة</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-right">
+                        <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-xs">
+                            <tr><th class="p-5">ID</th><th class="p-5">اسم الخدمة</th><th class="p-5">الشركة</th><th class="p-5">السعر</th><th class="p-5 text-center">أدوات</th></tr>
+                        </thead>
+                        <tbody id="services-tbody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. DEPOSIT METHODS VIEW -->
+        <div id="view-methods" class="hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-5 bg-purple-50 border-b border-purple-100 flex justify-between items-center">
+                    <h3 class="font-bold text-purple-800">أرقام وحسابات الاستقبال (يُحول لها التجار)</h3>
+                    <button onclick="editMethod()" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-sm">+ أضف حساب استقبال</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-right">
+                        <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-xs">
+                            <tr><th class="p-5">الاسم (مثال: فودافون كاش)</th><th class="p-5">رقم الحساب</th><th class="p-5">التفاصيل / ملاحظات</th><th class="p-5">مفعل؟</th><th class="p-5 text-center">أدوات</th></tr>
+                        </thead>
+                        <tbody id="methods-tbody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. LOGS VIEW -->
+        <div id="view-logs" class="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100 hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-right">
+                    <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-xs">
+                        <tr><th class="p-5 w-48">الوقت</th><th class="p-5">المستخدم</th><th class="p-5">الإجراء</th><th class="p-5">التفاصيل</th><th class="p-5">IP Server</th></tr>
+                    </thead>
+                    <tbody id="logs-tbody" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Check Auth
+        let currentUser = null;
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            const userStr = localStorage.getItem('drpay_user');
+            if(!userStr) { window.location.href = 'login.html'; return; }
+            try {
+                currentUser = JSON.parse(userStr);
+                if(currentUser.role !== 'admin' && currentUser.role !== 'employee') {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                document.getElementById('admin-body').classList.remove('hidden');
+                document.getElementById('admin-greeting').textContent = `أهلاً، المدراء / ${currentUser.name}`;
+                loadTransactions();
+            } catch(e) { window.location.href = 'login.html'; }
+        });
+
+        function logout() {
+            localStorage.removeItem('drpay_user');
+            localStorage.removeItem('drpay_token');
+            window.location.href = 'login.html';
+        }
+
+        const tabs = ['transactions', 'deposits', 'users', 'services', 'methods', 'logs'];
+        function switchTab(tabId) {
+            tabs.forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+                document.getElementById(`tab-${v}`).className = "flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition text-slate-500 hover:bg-slate-50";
+            });
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).className = "flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition bg-blue-50 text-blue-600";
+            
+            if(tabId === 'transactions') loadTransactions();
+            if(tabId === 'logs') loadLogs();
+            if(tabId === 'deposits') loadDeposits();
+            if(tabId === 'users') loadUsers();
+            if(tabId === 'services') loadServices();
+            if(tabId === 'methods') loadMethods();
+        }
+
+        /* ----- TRANSACTIONS ----- */
+        async function loadTransactions() {
+            const tbody = document.getElementById('tx-tbody'); tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center animate-pulse">جاري التحميل...</td></tr>';
+            try {
+                const res = await fetch('/api/transactions'); const data = await res.json();
+                if(data.success && data.transactions.length > 0) {
+                    tbody.innerHTML = '';
+                    data.transactions.forEach(tx => {
+                        let statusHtml = tx.status === 'pending' ? '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">معلق</span>' :
+                                       (tx.status === 'paid' ? '<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs">مدفوع</span>' : 
+                                       '<span class="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">مرفوض</span>');
+                        let actions = tx.status === 'pending' ? `
+                            <button onclick="approveTx('${tx.id}')" class="bg-emerald-500 text-white px-3 py-1 rounded text-xs">اعتماد</button>
+                            <button onclick="rejectTx('${tx.id}')" class="bg-red-500 text-white px-3 py-1 rounded text-xs">رفض</button>
+                        ` : `<a href="invoice.html?id=${tx.invoice_no}" target="_blank" class="text-blue-600 underline text-xs">إيصال</a>`;
+
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-4 font-mono text-xs">${tx.invoice_no}</td>
+                                <td class="p-4 font-bold text-slate-800">${tx.customer_name}<br><span class="text-xs text-slate-500">${tx.customer_phone}</span></td>
+                                <td class="p-4 text-xs">${tx.services?.name || tx.service_name}</td>
+                                <td class="p-4 font-bold text-emerald-600">${tx.total}</td>
+                                <td class="p-4">${statusHtml}</td>
+                                <td class="p-4 text-center space-x-reverse space-x-1">${actions}</td>
+                            </tr>
+                        `;
+                    });
+                } else tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400">لا توجد عمليات</td></tr>';
+            } catch(e) {}
+        }
+        async function approveTx(id) { if(confirm('اعتماد ودفع؟')) { await fetch('/api/approve', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({transaction_id: id, status: 'paid'})}); loadTransactions(); } }
+        async function rejectTx(id) { if(confirm('رفض؟')) { await fetch('/api/approve', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({transaction_id: id, status: 'rejected'})}); loadTransactions(); } }
+
+        /* ----- DEPOSITS ----- */
+        async function loadDeposits() {
+            const tbody = document.getElementById('dep-tbody'); tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center animate-pulse">جاري التحميل...</td></tr>';
+            try {
+                const res = await fetch('/api/admin/deposits'); const data = await res.json();
+                if(data.success && data.requests.length > 0) {
+                    tbody.innerHTML = '';
+                    data.requests.forEach(req => {
+                        let statusHtml = req.status === 'pending' ? '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">معلق للتحقق</span>' :
+                                       (req.status === 'approved' ? '<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-xs">تم الشحن لحسابه</span>' : '<span class="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">مرفوض</span>');
+                        
+                        let actions = req.status === 'pending' ? `
+                            <button onclick="resolveDeposit('${req.id}', 'approved')" class="bg-emerald-500 text-white px-3 py-1 rounded text-xs">قبول (وإضافة الرصيد)</button>
+                            <button onclick="resolveDeposit('${req.id}', 'rejected')" class="bg-red-500 text-white px-3 py-1 rounded text-xs">رفض</button>
+                        ` : '-';
+
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-4 text-xs font-mono" dir="ltr">${new Date(req.created_at).toLocaleString('ar-EG')}</td>
+                                <td class="p-4 font-bold">${req.custom_users?.name}<br><span class="text-xs font-mono">${req.custom_users?.phone}</span></td>
+                                <td class="p-4 text-xs">${req.deposit_methods?.name}</td>
+                                <td class="p-4 font-mono font-bold text-indigo-600">${req.transfer_ref || 'بدون مرجع'}</td>
+                                <td class="p-4 font-black text-emerald-600 text-lg">${parseFloat(req.amount).toFixed(2)}</td>
+                                <td class="p-4">${statusHtml}</td>
+                                <td class="p-4 text-center space-x-reverse space-x-1">${actions}</td>
+                            </tr>
+                        `;
+                    });
+                } else tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center">لا توجد طلبات إيداع</td></tr>';
+            } catch(e) {}
+        }
+        async function resolveDeposit(id, status) {
+            if(!confirm(status === 'approved' ? 'الرصيد سيضاف فوراً، هل أنت متأكد من التحويل؟' : 'تأكيد الرفض؟')) return;
+            await fetch('/api/admin/deposits', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status}) });
+            loadDeposits();
+        }
+
+        /* ----- USERS ----- */
+        async function loadUsers() {
+            const tbody = document.getElementById('users-tbody'); tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center animate-pulse">جاري التحميل...</td></tr>';
+            try {
+                const res = await fetch('/api/admin/users'); const data = await res.json();
+                if(data.success) {
+                    tbody.innerHTML = '';
+                    data.users.forEach(u => {
+                        let statHtml = u.status === 'active' ? `<span class="text-emerald-600 font-bold text-xs"><i data-lucide="check" class="w-3 h-3 inline"></i> نشط</span>` : `<span class="text-red-600 font-bold text-xs">محظور</span>`;
+                        let balance = u.wallets ? u.wallets.balance : 0;
+                        let toggleAction = u.status === 'active' ? `blockUser('${u.id}', 'blocked')` : `blockUser('${u.id}', 'active')`;
+                        
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-4 font-mono text-xs">${u.id}</td>
+                                <td class="p-4 font-bold text-blue-600">${u.name}</td>
+                                <td class="p-4 font-mono text-xs">${u.phone}<br>${u.email||''}</td>
+                                <td class="p-4 font-black">${parseFloat(balance).toFixed(2)}</td>
+                                <td class="p-4 text-xs uppercase">${u.role}</td>
+                                <td class="p-4">${statHtml}</td>
+                                <td class="p-4 text-center space-x-reverse space-x-1">
+                                    <button onclick="${toggleAction}" class="bg-slate-800 text-white px-2 py-1 rounded text-xs">${u.status === 'active' ? 'حظر' : 'تفعيل'}</button>
+                                    <button onclick="addBalanceManually('${u.id}')" class="bg-purple-500 text-white px-2 py-1 rounded text-xs">شحن مباشر</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    lucide.createIcons();
+                }
+            } catch(e) {}
+        }
+        async function blockUser(id, newStatus) {
+            await fetch('/api/admin/users', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: newStatus}) });
+            loadUsers();
+        }
+        async function addBalanceManually(id) {
+            const amount = prompt('أدخل المبلغ المُراد شحنه فوراً للتاجر (EGP):');
+            if(!amount || isNaN(amount)) return;
+            const res = await fetch('/api/wallet', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({user_id: id, amount}) });
+            const data = await res.json();
+            if(data.success) { alert('تم الشحن بنجاح!'); loadUsers(); } else alert('خطأ في الشحن');
+        }
+
+        /* ----- SERVICES ----- */
+        async function loadServices() {
+            const tbody = document.getElementById('services-tbody');
+            try {
+                const res = await fetch('/api/admin/services'); const data = await res.json();
+                tbody.innerHTML = '';
+                data.services.forEach(s => {
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-4 font-mono text-xs">${s.id}</td>
+                            <td class="p-4 font-bold">${s.name}</td>
+                            <td class="p-4 text-xs">${s.company||'-'}</td>
+                            <td class="p-4 font-black text-blue-600">${s.price}</td>
+                            <td class="p-4 text-center">
+                                <button onclick="delService('${s.id}')" class="text-red-500 hover:text-red-700 mx-1"><i data-lucide="trash-2" class="w-4 h-4 inline"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                lucide.createIcons();
+            } catch(e) {}
+        }
+        async function editService() {
+            const n = prompt('اسم الخدمة:'); if(!n) return;
+            const p = prompt('سعر الخدمة:'); if(!p) return;
+            const c = prompt('الشركة (اختياري):', '');
+            await fetch('/api/admin/services', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: n, price: p, company: c}) });
+            loadServices();
+        }
+        async function delService(id) {
+            if(!confirm('حذف؟')) return;
+            await fetch('/api/admin/services', { method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id}) });
+            loadServices();
+        }
+
+        /* ----- DEPOSIT METHODS ----- */
+        async function loadMethods() {
+            const tbody = document.getElementById('methods-tbody');
+            try {
+                const res = await fetch('/api/admin/deposit_methods'); const data = await res.json();
+                tbody.innerHTML = '';
+                data.methods.forEach(m => {
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-4 font-bold">${m.name}</td>
+                            <td class="p-4 font-mono font-bold text-indigo-600 tracking-wider">${m.account_number}</td>
+                            <td class="p-4 text-xs text-slate-500 max-w-[200px] truncate">${m.details||'-'}</td>
+                            <td class="p-4">${m.is_active ? '<span class="text-emerald-500 font-bold text-xs">نعم</span>' : '<span class="text-red-500 font-bold text-xs">لا</span>'}</td>
+                            <td class="p-4 text-center space-x-reverse space-x-2">
+                                <button onclick="delMethod('${m.id}')" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4 inline"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                lucide.createIcons();
+            } catch(e) {}
+        }
+        async function editMethod() {
+            const n = prompt('النوع (مثلا كاش, انيستا, البنك الاهلي):'); if(!n) return;
+            const a = prompt('رقم الحساب / الموبايل:'); if(!a) return;
+            const d = prompt('التفاصيل للمستلم (اختياري):', '');
+            await fetch('/api/admin/deposit_methods', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name: n, account_number: a, details: d, is_active: true}) });
+            loadMethods();
+        }
+        async function delMethod(id) {
+            if(!confirm('حذف هذا الحساب من نظر التجار؟')) return;
+            await fetch('/api/admin/deposit_methods', { method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id}) });
+            loadMethods();
+        }
+
+        /* ----- LOGS ----- */
+        async function loadLogs() {
+            const tbody = document.getElementById('logs-tbody'); tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center animate-pulse">جاري التحميل...</td></tr>';
+            try {
+                const res = await fetch('/api/logs'); const data = await res.json();
+                if(data.success) {
+                    tbody.innerHTML = '';
+                    data.logs.forEach(log => {
+                        const date = new Date(log.created_at).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+                        const userName = log.custom_users ? log.custom_users.name : 'مجهول';
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-4 text-slate-500 font-mono text-xs" dir="ltr">${date}</td>
+                                <td class="p-4 font-bold text-slate-700 text-xs">${userName}</td>
+                                <td class="p-4"><span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold">${log.action}</span></td>
+                                <td class="p-4 text-slate-600 text-[10px] md:text-xs">${log.details}</td>
+                                <td class="p-4 font-mono text-slate-400 text-[10px]">${log.ip_address || '-'}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch(e) {}
+        }
+    </script>
+</body>
+</html>
