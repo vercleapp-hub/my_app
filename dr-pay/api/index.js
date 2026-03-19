@@ -1,7 +1,10 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 
-const supabase = createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_ANON_KEY || '');
+const supabase = createClient(
+  process.env.SUPABASE_URL || 'https://auwnsxmdksplftccysqu.supabase.co', 
+  process.env.SUPABASE_ANON_KEY || 'sb_publishable_sCsVKIE6tLVRgNnIRHzKSw_T5iQntHi'
+);
 
 export default async function handler(req, res) {
   // CORS Preflight
