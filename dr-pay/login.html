@@ -1,0 +1,138 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dr Pay - ط§ظ„ط¯ط®ظˆظ„ ظ„ظ„ظ†ط¸ط§ظ…</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Tajawal', sans-serif; background: #0f172a; }</style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 text-white">
+    <div class="bg-slate-800 border border-slate-700 rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full relative overflow-hidden">
+        <div class="text-center mb-6 relative z-10">
+            <h1 class="text-3xl font-extrabold text-blue-500 mb-2">Dr Pay</h1>
+            <p class="text-slate-400 font-medium text-sm">ط¨ظˆط§ط¨ط© ط§ظ„طھط§ط¬ط± ظˆط§ظ„ط¥ط¯ط§ط±ط©</p>
+        </div>
+
+        <!-- Toggle Tabs -->
+        <div class="flex p-1 bg-slate-900 rounded-xl mb-6 relative z-10 border border-slate-700">
+            <button onclick="toggleTab('login')" id="tab-login" class="flex-1 py-2 text-sm font-bold bg-slate-700 text-white rounded-lg transition-all shadow-sm">طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„</button>
+            <button onclick="toggleTab('register')" id="tab-register" class="flex-1 py-2 text-sm font-bold text-slate-400 hover:text-white rounded-lg transition-all">ط­ط³ط§ط¨ ط¬ط¯ظٹط¯</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="space-y-4 relative z-10">
+            <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ</label>
+                <input type="email" id="log-email" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-blue-500 outline-none transition-all" placeholder="name@domain.com">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±</label>
+                <input type="password" id="log-password" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-blue-500 outline-none transition-all" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+            </div>
+            <button type="submit" id="log-btn" class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all text-sm shadow-lg shadow-blue-500/20">
+                ط¯ط®ظˆظ„
+            </button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" class="space-y-4 relative z-10 hidden">
+            <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">ط§ظ„ط§ط³ظ… ط¨ط§ظ„ظƒط§ظ…ظ„ (ط±ظ‚ظ… ط§ظ„ظ…ط­ظ„ ط£ظˆ ط§ظ„ط´ط±ظƒط©)</label>
+                <input type="text" id="reg-name" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-blue-500 outline-none transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">ط±ظ‚ظ… ط§ظ„ظ‡ط§طھظپ ط§ظ„ظ…ظ…ظٹط² (ظ„ظ„ظ…ط­ظپط¸ط©)</label>
+                <input type="tel" id="reg-phone" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-blue-500 outline-none transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">ط§ظ„ط¨ط±ظٹط¯ ط§ظ„ط¥ظ„ظƒطھط±ظˆظ†ظٹ</label>
+                <input type="email" id="reg-email" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-blue-500 outline-none transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1">ظƒظ„ظ…ط© ط§ظ„ظ…ط±ظˆط±</label>
+                <input type="password" id="reg-password" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-blue-500 outline-none transition-all">
+            </div>
+            <button type="submit" id="reg-btn" class="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition-all text-sm shadow-lg shadow-indigo-500/20">
+                ط¥ظ†ط´ط§ط، ط­ط³ط§ط¨
+            </button>
+        </form>
+
+        <div id="result" class="mt-4 text-center hidden p-3 rounded-xl font-bold border border-red-500 text-red-400 bg-red-500/10 text-sm"></div>
+    </div>
+    
+    <script>
+        function toggleTab(tab) {
+            document.getElementById('result').classList.add('hidden');
+            if(tab === 'login') {
+                document.getElementById('login-form').classList.remove('hidden');
+                document.getElementById('register-form').classList.add('hidden');
+                document.getElementById('tab-login').className = "flex-1 py-2 text-sm font-bold bg-slate-700 text-white rounded-lg transition-all shadow-sm";
+                document.getElementById('tab-register').className = "flex-1 py-2 text-sm font-bold text-slate-400 hover:text-white rounded-lg transition-all";
+            } else {
+                document.getElementById('login-form').classList.add('hidden');
+                document.getElementById('register-form').classList.remove('hidden');
+                document.getElementById('tab-register').className = "flex-1 py-2 text-sm font-bold bg-slate-700 text-white rounded-lg transition-all shadow-sm";
+                document.getElementById('tab-login').className = "flex-1 py-2 text-sm font-bold text-slate-400 hover:text-white rounded-lg transition-all";
+            }
+        }
+
+        async function handleAuth(url, payload, btnId) {
+            const btn = document.getElementById(btnId);
+            const resultDiv = document.getElementById('result');
+            
+            btn.disabled = true;
+            btn.textContent = 'ط¬ط§ط±ظٹ ط§ظ„طھط­ظ‚ظ‚...';
+            resultDiv.classList.add('hidden');
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    localStorage.setItem('drpay_user', JSON.stringify(data.user));
+                    localStorage.setItem('drpay_token', data.token);
+                    
+                    if(data.user.role === 'admin' || data.user.role === 'employee') {
+                        window.location.href = 'admin.html';
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                } else {
+                    throw new Error(data.error || 'ظپط´ظ„طھ ط§ظ„ط¹ظ…ظ„ظٹط©');
+                }
+            } catch (err) {
+                resultDiv.classList.remove('hidden');
+                resultDiv.textContent = err.message;
+                btn.disabled = false;
+                btn.textContent = btnId === 'log-btn' ? 'ط¯ط®ظˆظ„' : 'ط¥ظ†ط´ط§ط، ط­ط³ط§ط¨';
+            }
+        }
+
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleAuth('/api/index?action=index&action=login', {
+                email: document.getElementById('log-email').value,
+                password: document.getElementById('log-password').value
+            }, 'log-btn');
+        });
+
+        document.getElementById('register-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleAuth('/api/index?action=index&action=register', {
+                name: document.getElementById('reg-name').value,
+                phone: document.getElementById('reg-phone').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-password').value
+            }, 'reg-btn');
+        });
+    </script>
+</body>
+</html>
+

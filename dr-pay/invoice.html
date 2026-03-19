@@ -1,0 +1,118 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dr Pay - ظپط§طھظˆط±ط© ط§ظ„ط¯ظپط¹</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; background: #f8fafc; }
+        @media print {
+            body { background: white; }
+            .no-print { display: none !important; }
+            .receipt { box-shadow: none; border: none; max-width: 100%; margin: 0; padding: 0; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-12 flex justify-center items-start min-h-screen">
+    
+    <div class="receipt bg-white w-full max-w-sm rounded-[24px] shadow-lg overflow-hidden relative border border-slate-100">
+        <div class="bg-emerald-500 h-20 absolute top-0 left-0 w-full"></div>
+        
+        <div class="relative pt-8 p-6 text-center z-10">
+            <div class="w-20 h-20 bg-white rounded-full shadow-md mx-auto flex items-center justify-center text-emerald-500 mb-4 transform hover:scale-105 transition">
+                <i data-lucide="check-circle-2" class="w-12 h-12"></i>
+            </div>
+            
+            <h1 class="text-2xl font-extrabold text-slate-800">ط¥ظٹطµط§ظ„ ط¯ظپط¹</h1>
+            <p class="text-xs font-bold text-slate-500 mt-1 mb-6">Dr Pay System</p>
+            
+            <div class="text-right bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                    <p class="text-xs text-slate-500 font-bold">ظ…ط¹ط±ظپ ط§ظ„ظپط§طھظˆط±ط©</p>
+                    <p class="font-mono font-bold text-slate-800 text-sm" id="inv-no">--</p>
+                </div>
+                
+                <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                    <p class="text-xs text-slate-500 font-bold">ط§ظ„طھط§ط±ظٹط®</p>
+                    <p class="font-bold text-slate-800 text-xs" id="inv-date">--</p>
+                </div>
+                
+                <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                    <p class="text-xs text-slate-500 font-bold">ط§ظ„ط®ط¯ظ…ط©</p>
+                    <p class="font-bold text-slate-800 text-sm" id="inv-desc">طھط­ظ…ظٹظ„ ط§ظ„ط¨ظٹط§ظ†ط§طھ...</p>
+                </div>
+
+                <div class="flex justify-between items-center pt-2">
+                    <p class="text-sm text-slate-500 font-bold">ط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ ط§ظ„ظ…ط®طµظˆظ…</p>
+                    <p class="font-black text-emerald-600 text-xl" id="inv-amount">0.00</p>
+                </div>
+            </div>
+
+            <div class="mt-8 flex flex-col gap-3 no-print">
+                <button id="share-btn" onclick="shareInvoice()" class="w-full bg-blue-50 text-blue-600 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-blue-100 transition text-sm">
+                    <i data-lucide="share-2" class="w-5 h-5"></i> ظ…ط´ط§ط±ظƒط© ط§ظ„ط¥ظٹطµط§ظ„ ط¹ط¨ط± ط§ظ„ظˆط§طھط³ط§ط¨
+                </button>
+                <div class="flex gap-3">
+                    <button onclick="window.print()" class="flex-1 bg-slate-900 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition text-sm">
+                        <i data-lucide="printer" class="w-4 h-4"></i> ط·ط¨ط§ط¹ط©
+                    </button>
+                    <a href="index.html" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3.5 rounded-xl flex items-center justify-center text-sm hover:bg-slate-200 transition">
+                        ط§ظ„ط¹ظˆط¯ط© ظ„ظ„ط±ط¦ظٹط³ظٹط©
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
+        document.getElementById('inv-no').textContent = id || 'INV-2026-EXAMPLE';
+        
+        const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+        document.getElementById('inv-date').textContent = new Date().toLocaleString('ar-EG', options);
+        
+        let invoiceDataText = `ط¥ظٹطµط§ظ„ ط¯ظپط¹ Dr Pay\nط±ظ‚ظ… ط§ظ„ظپط§طھظˆط±ط©: ${id}\nط§ظ„طھط§ط±ظٹط®: ${new Date().toLocaleString('ar-EG', options)}`;
+
+        async function fetchInvDetails() {
+            try {
+                // In a real PWA context, you'd fetch the specific invoice API.
+                // Currently using transactions list to search.
+                const res = await fetch('/api/index?action=index&action=transactions');
+                const data = await res.json();
+                if(data.success) {
+                    const tx = data.transactions.find(t => t.invoice_no === id);
+                    if(tx) {
+                        const serviceName = tx.service_name + (tx.service_data?.ref_number ? ` (${tx.service_data.ref_number})` : '');
+                        document.getElementById('inv-desc').textContent = serviceName;
+                        document.getElementById('inv-amount').textContent = tx.total + ' ' + (tx.currency || 'ط¬.ظ…');
+                        invoiceDataText += `\nط§ظ„ط®ط¯ظ…ط©: ${serviceName}\nط§ظ„ط¥ط¬ظ…ط§ظ„ظٹ: ${tx.total} ط¬.ظ…`;
+                    }
+                }
+            } catch(e) {}
+        }
+        
+        if(id) fetchInvDetails();
+
+        async function shareInvoice() {
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'ط¥ظٹطµط§ظ„ ط¯ظپط¹ Dr Pay',
+                        text: invoiceDataText,
+                        url: window.location.href
+                    });
+                } catch(e) { console.log('Share failed', e); }
+            } else {
+                // Fallback to whatsapp direct link
+                window.open(`https://wa.me/?text=${encodeURIComponent(invoiceDataText + '\n\n' + window.location.href)}`);
+            }
+        }
+    </script>
+</body>
+</html>
+
