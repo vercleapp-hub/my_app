@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS public.deposit_requests (
     method_id UUID REFERENCES public.deposit_methods(id) ON DELETE SET NULL,
     amount NUMERIC(10, 2) NOT NULL,
     transfer_ref TEXT,
+    transfer_image TEXT,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
     reviewed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -128,5 +129,57 @@ CREATE TABLE IF NOT EXISTS public.settings (
 
 -- Basic Seeding
 INSERT INTO public.settings (key, value)
-VALUES ('system_settings', '{"currency": "ج.م", "system_name": "Dr Pay", "fees_percentage": 0}')
+VALUES ('system_settings', '{"currency": "ط¬.ظ…", "system_name": "Dr Pay", "fees_percentage": 0}')
 ON CONFLICT (key) DO NOTHING;
+
+-- 13. Tracker & Authorized Devices
+CREATE TABLE IF NOT EXISTS public.devices (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.custom_users(id) ON DELETE CASCADE,
+    device_fingerprint TEXT NOT NULL,
+    device_info JSONB DEFAULT '{}'::jsonb,
+    location JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(user_id, device_fingerprint)
+);
+
+-- 14. Max devices per user (ALTER existing table)
+ALTER TABLE public.custom_users ADD COLUMN IF NOT EXISTS max_devices INTEGER DEFAULT 2;
+
+-- 15. Service Categories
+CREATE TABLE IF NOT EXISTS public.service_categories (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL,
+    icon TEXT DEFAULT 'folder',
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 16. Add category to services
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES public.service_categories(id) ON DELETE SET NULL;
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+-- 17. Scratch Cards (Recharge Cards Inventory)
+CREATE TABLE IF NOT EXISTS public.scratch_cards (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    category TEXT NOT NULL,
+    denomination NUMERIC(10, 2) NOT NULL,
+    code TEXT NOT NULL,
+    serial_number TEXT,
+    is_sold BOOLEAN DEFAULT false,
+    sold_to UUID REFERENCES public.custom_users(id) ON DELETE SET NULL,
+    sold_at TIMESTAMP WITH TIME ZONE,
+    added_by UUID REFERENCES public.custom_users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 18. OTP Verifications
+CREATE TABLE IF NOT EXISTS public.otp_verifications (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    phone TEXT NOT NULL,
+    code TEXT NOT NULL,
+    purpose TEXT CHECK (purpose IN ('register', 'new_device')),
+    is_verified BOOLEAN DEFAULT false,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);

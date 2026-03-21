@@ -8,11 +8,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: 'Tajawal', sans-serif; background: #0f172a; color: #f8fafc; padding-bottom: 80px; } 
+        body { font-family: 'Tajawal', sans-serif; background: #0f172a; color: #f8fafc; padding-bottom: 80px; -webkit-tap-highlight-color: transparent; }
         .hidden-view { display: none !important; }
         .glass-header { background: linear-gradient(135deg, rgba(37,99,235,0.9) 0%, rgba(79,70,229,0.95) 100%); backdrop-filter: blur(10px); }
         .cat-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; }
         .cat-card:active { transform: scale(0.95); border-color: #3b82f6; }
+        
+        /* Thermal Receipt Styling (48mm focus) */
+        .receipt-container { width: 100%; max-width: 48mm; margin: 0 auto; background: white; color: black; padding: 10px; font-family: 'Courier New', Courier, monospace; font-size: 11px; line-height: 1.4; border: 1px solid #eee; }
+        .receipt-header { border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px; text-align: center; }
+        .receipt-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+        .receipt-sep { border-top: 1px dashed #000; margin: 5px 0; }
+        .receipt-success { font-weight: bold; font-size: 13px; text-align: center; margin: 8px 0; border: 1px solid #000; padding: 4px; }
+        
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
@@ -20,30 +28,137 @@
 </head>
 <body class="bg-slate-900">
 
-    <!-- Header Content: Top Bar -->
-    <header class="glass-header p-5 rounded-b-[2rem] shadow-2xl shadow-blue-900/20 fixed top-0 w-full z-40 border-b border-indigo-500/30">
-        <div class="flex justify-between items-center mb-5">
-            <div class="flex items-center gap-3">
-                <button class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition border border-white/10 shadow-inner">
-                    <i data-lucide="menu" class="text-white w-5 h-5"></i>
-                </button>
-                <div class="flex flex-col">
-                    <span class="text-white/80 font-medium text-[10px] uppercase tracking-wider mb-0.5">الدكتور باي • Dr Pay</span>
-                    <span class="text-white font-extrabold text-sm tracking-wide">خيارات التحكم</span>
+    <!-- PAYMENT MODAL -->
+    <div id="payment-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[60] flex items-center justify-center hidden p-4">
+        <div class="bg-slate-800 border border-white/10 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl relative animate-scale-up" id="payment-card">
+            <button onclick="closePaymentModal()" class="absolute left-6 top-6 text-slate-400 hover:text-white transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
+                    <img id="pay-logo" src="logo/logo.png" class="w-10 h-10 object-contain grayscale-0">
+                </div>
+                <h3 id="pay-service-name" class="text-lg font-black text-white leading-tight mb-1">...</h3>
+                <p class="text-xs text-slate-400 font-bold mb-4">أدخل تفاصيل العملية</p>
+                <div class="text-2xl font-black text-emerald-400 font-mono tracking-wider bg-slate-900/50 py-3 rounded-2xl border border-white/5" id="pay-amount-display">0.00 <span class="text-xs">ج.م</span></div>
+            </div>
+            
+            <form id="payment-form" class="space-y-4">
+                <div class="relative">
+                    <input type="text" id="pay-number" required placeholder="رقم الخدمة / العميل" class="w-full bg-slate-900 border border-slate-700/50 rounded-2xl px-12 py-4 text-sm font-bold text-white outline-none focus:border-blue-500 transition-all font-mono">
+                    <i data-lucide="phone-call" class="absolute right-4 top-4 w-5 h-5 text-slate-500"></i>
+                </div>
+                <div id="pay-amount-input-div" class="hidden">
+                    <label class="block text-[10px] font-black text-slate-500 mb-1.5 mr-2">تعديل القيمة (ج.م)</label>
+                    <input type="number" id="pay-amount-val" step="0.01" class="w-full bg-slate-900 border border-slate-700/50 rounded-2xl px-12 py-4 text-sm font-bold text-emerald-400 outline-none focus:border-emerald-500 transition-all font-mono" placeholder="0.00">
+                    <i data-lucide="banknote" class="absolute right-4 top-[10.5rem] w-5 h-5 text-slate-500"></i>
+                </div>
+                <button type="submit" id="pay-confirm-btn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-black py-4 rounded-2xl transition shadow-lg active:scale-95 flex items-center justify-center gap-2">تأكيد الدفع الآن <i data-lucide="credit-card" class="w-5 h-5"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRATCH CARD MODAL -->
+    <div id="card-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[60] flex items-center justify-center hidden p-4">
+        <div class="bg-slate-800 border border-white/10 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl relative animate-scale-up">
+            <button onclick="closeCardModal()" class="absolute left-6 top-6 text-slate-400 hover:text-white transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-emerald-500/20"><i data-lucide="ticket" class="text-emerald-400 w-8 h-8"></i></div>
+                <h3 class="text-lg font-black text-white leading-tight mb-1">شراء كروت شحن</h3>
+                <p class="text-xs text-slate-400 font-bold">اختر الشركة والقيمة للحصول على الكود فوراً</p>
+            </div>
+            <form id="card-purchase-form" class="space-y-4">
+                <select id="card-select" required class="w-full bg-slate-900 border border-slate-700 rounded-2xl px-4 py-4 text-sm font-bold text-white focus:border-emerald-500 outline-none"><option value="">جاري جلب المتاح...</option></select>
+                <div class="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-2xl">
+                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 mb-2"><span>القيمة</span><span id="card-modal-price">0.00 ج.م</span></div>
+                    <div class="flex justify-between items-center text-xs font-black text-emerald-400"><span>الإجمالي (شامل الرسوم)</span><span id="card-modal-total">0.00 ج.م</span></div>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95">تأكيد شراء الكود</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- RECEIPT MODAL -->
+    <div id="receipt-modal" class="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center hidden p-2">
+        <div class="w-full max-w-[400px] flex flex-col h-full animate-scale-up">
+            <!-- Receipt Scrollable Area -->
+            <div class="flex-1 overflow-y-auto p-4 mb-4" id="receipt-print-area">
+                <div class="receipt-container" id="thermal-receipt">
+                    <div class="receipt-header">
+                        <img src="logo/logo.png" style="width: 40px; height: 40px; margin: 0 auto 5px; display: block;">
+                        <div style="font-weight: 800; font-size: 14px;">الدكتور باي (Dr Pay)</div>
+                        <div style="font-size: 10px;">الخدمه علي طول</div>
+                    </div>
+                    
+                    <div id="receipt-service" style="font-weight: bold; text-align: center; margin-bottom: 5px;">...</div>
+                    <div class="receipt-row"><span>التاريخ</span><span id="re-date">...</span></div>
+                    <div class="receipt-row"><span>رقم الخدمة</span><span id="re-phone" style="font-weight: bold;">050...</span></div>
+                    <div class="receipt-sep"></div>
+                    <div style="font-size: 9px; margin-bottom: 5px;">تفاصيل: <span id="re-details">...</span></div>
+                    
+                    <div class="receipt-success">✔ عملية ناجحة</div>
+                    
+                    <div class="receipt-row"><span>القيمة</span><span id="re-val">... ج.م</span></div>
+                    <div class="receipt-row"><span>الرسوم</span><span id="re-fees">... ج.م</span></div>
+                    <div class="receipt-sep"></div>
+                    <div class="receipt-row" style="font-weight: bold; font-size: 12px;"><span>الإجمالي</span><span id="re-total">... ج.م</span></div>
+                    
+                    <div class="receipt-sep"></div>
+                    <div class="receipt-row"><span>مرجعي</span><span id="re-ref" style="font-size: 10px;">...</span></div>
+                    
+                    <div style="font-size: 9px; text-align: center; margin-top: 10px; color: #555;">
+                        عند البطء في الشبكة قد يستغرق التنفيذ حتى 24 ساعة<br>
+                        تم الدفع عبر ELDoctor Pay<br>
+                        الدعم: 01063151472
+                    </div>
                 </div>
             </div>
-            <!-- Balance Area -->
-            <div class="text-left bg-slate-900/40 border border-white/10 px-4 py-1.5 rounded-2xl shadow-inner backdrop-blur-sm">
-                <p class="text-[9px] text-blue-200 uppercase font-black tracking-widest flex justify-end items-center gap-1 mb-0.5"><i data-lucide="wallet" class="w-3 h-3"></i> الرصيد</p>
-                <p class="text-xl font-black text-white font-mono tracking-wider leading-none" id="user-balance">0.00 <span class="text-[10px] text-emerald-300">ج.م</span></p>
+            
+            <!-- Actions -->
+            <div class="grid grid-cols-2 gap-3 p-4 bg-slate-900/50 rounded-t-3xl border-t border-white/5 shrink-0">
+                <button onclick="printReceipt()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg"><i data-lucide="printer" class="w-5 h-5"></i> طباعة</button>
+                <button onclick="shareReceipt()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg"><i data-lucide="share-2" class="w-5 h-5"></i> مشاركة</button>
+                <button onclick="closeReceipt()" class="col-span-2 text-slate-400 font-bold py-3 hover:text-white transition">إغلاق الإيصال</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header Content: Top Bar -->
+    <header id="main-header" class="glass-header p-5 rounded-b-[2.5rem] shadow-2xl fixed top-0 w-full z-40 border-b border-white/10 transition-colors duration-500">
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-0.5 shadow-lg transform -rotate-3 hover:rotate-0 transition-transform">
+                    <div class="w-full h-full bg-slate-900 rounded-[0.9rem] flex items-center justify-center overflow-hidden border border-white/20">
+                        <img src="logo/logo.png" alt="Dr Pay" class="w-8 h-8 object-contain">
+                    </div>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-white font-black text-sm tracking-tight" id="header-shop-name">جاري التحميل...</span>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                        <span class="text-white/40 text-[9px] font-bold uppercase tracking-widest">متصل الآن</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <div class="text-left bg-gradient-to-l from-slate-900/60 to-transparent border-r border-white/10 pr-4 pl-2 py-1">
+                    <p class="text-[8px] text-blue-300 font-black uppercase tracking-[0.2em] mb-0.5 text-right">المحفظة</p>
+                    <p class="text-xl font-black text-white font-mono tracking-tighter" id="user-balance">0.00 <span class="text-[10px] text-emerald-400">ج.م</span></p>
+                </div>
+                <button onclick="openNotifications()" class="relative w-11 h-11 bg-slate-900/40 border border-white/10 rounded-2xl flex items-center justify-center text-blue-300 hover:bg-slate-800 transition active:scale-95 shadow-lg group">
+                    <i data-lucide="bell" class="w-6 h-6 group-hover:rotate-12 transition-transform"></i>
+                    <span id="notif-badge" class="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 border-2 border-slate-900 rounded-full hidden animate-bounce"></span>
+                </button>
             </div>
         </div>
         
-        <!-- Search / Invoice Input -->
-        <div class="relative">
-            <input type="text" id="quick-invoice" placeholder="الفاتورة : اكتب الرقم هنا..." class="w-full bg-white text-slate-900 border-none rounded-2xl px-12 py-3.5 text-sm font-bold shadow-[0_8px_30px_rgb(0,0,0,0.12)] focus:outline-none focus:ring-4 focus:ring-blue-400/50 placeholder-slate-400 transition-all font-mono">
-            <i data-lucide="search" class="absolute right-4 top-3.5 w-5 h-5 text-blue-600/60"></i>
-            <button class="absolute left-2 top-2 bg-blue-600 text-white p-1.5 rounded-xl shadow self-center hover:bg-blue-700 active:scale-95 transition"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+        <!-- Search -->
+        <div class="relative group">
+            <input type="text" id="quick-search" oninput="searchServices(this.value)" placeholder="ابحث باسم الخدمة أو الكود المختصر..." class="w-full bg-slate-900/50 backdrop-blur-md text-white border border-white/10 rounded-[1.5rem] px-12 py-4 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-blue-500/30 placeholder-white/30 transition-all shadow-inner">
+            <i data-lucide="search" class="absolute right-4 top-4 w-5 h-5 text-blue-500"></i>
+            <div class="absolute left-4 top-4 flex items-center gap-1">
+                <div class="h-5 w-[1px] bg-white/10 mx-1"></div>
+                <i data-lucide="command" class="w-4 h-4 text-white/20"></i>
+            </div>
         </div>
     </header>
 
@@ -101,6 +216,23 @@
                         <label class="block text-xs font-bold text-slate-400 mb-2">الرقم المرجعي (أو رقم التليفون المحول منه)</label>
                         <input type="text" id="dep-ref" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-blue-500 text-white outline-none font-mono">
                     </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-2">صورة إيصال التحويل <span class="text-red-400">*</span></label>
+                        <div id="dep-img-area" onclick="document.getElementById('dep-img-input').click()" class="w-full bg-slate-900 border-2 border-dashed border-slate-600 rounded-xl p-4 text-center cursor-pointer hover:border-blue-500 transition-all group">
+                            <div id="dep-img-placeholder" class="flex flex-col items-center gap-2">
+                                <div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center group-hover:bg-blue-600/20 transition">
+                                    <i data-lucide="image-plus" class="w-6 h-6 text-slate-500 group-hover:text-blue-400"></i>
+                                </div>
+                                <p class="text-slate-500 text-xs font-bold">اضغط هنا لرفع صورة التحويل</p>
+                                <p class="text-slate-600 text-[10px]">PNG, JPG - الحد الأقصى 2MB</p>
+                            </div>
+                            <div id="dep-img-preview" class="hidden">
+                                <img id="dep-img-thumb" src="" class="max-h-40 mx-auto rounded-xl border border-slate-700 shadow-lg">
+                                <p class="text-emerald-400 text-xs font-bold mt-2">✓ تم رفع الصورة بنجاح</p>
+                            </div>
+                        </div>
+                        <input type="file" id="dep-img-input" accept="image/*" class="hidden" onchange="handleDepositImage(this)">
+                    </div>
                     <button type="submit" id="dep-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition text-sm flex items-center justify-center gap-2">
                         إرسال الإشعار <i data-lucide="send" class="w-4 h-4"></i>
                     </button>
@@ -111,15 +243,194 @@
 
         <!-- Reports View -->
         <div id="view-reports" class="hidden-view space-y-4 pt-4">
-            <h2 class="font-bold text-lg text-white flex items-center gap-2"><i data-lucide="file-text" class="text-blue-500"></i> تقارير العمليات</h2>
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 overflow-hidden">
+            <div class="flex justify-between items-center px-1">
+                <h2 class="font-black text-lg text-white flex items-center gap-2"><i data-lucide="file-text" class="text-blue-500"></i> سجل المدفوعات</h2>
+                <button onclick="loadMe()" class="p-2 bg-slate-800 rounded-xl text-blue-400"><i data-lucide="rotate-cw" class="w-4 h-4"></i></button>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 rounded-3xl p-4 overflow-hidden">
                 <div class="flex flex-col gap-3" id="reports-list">
-                    <div class="w-full text-center p-8 text-slate-500 font-bold">لا توجد عمليات سابقة اليوم.</div>
+                    <div class="w-full text-center p-8 text-slate-500 font-bold">جاري تحميل التقارير...</div>
                 </div>
             </div>
         </div>
+
+        <!-- Settings View -->
+        <div id="view-settings" class="hidden-view space-y-6 pt-4 pb-20">
+            <!-- User Profile Card -->
+            <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 rounded-[2.5rem] p-6 shadow-xl">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 rounded-3xl bg-blue-600/20 flex items-center justify-center text-blue-400 border border-blue-500/20">
+                        <i data-lucide="user" class="w-8 h-8"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-black text-lg" id="set-user-name">...</h3>
+                        <p class="text-blue-400 font-bold text-xs" id="set-shop-name">...</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="bg-slate-900/50 p-3 rounded-2xl border border-white/5 text-center">
+                        <span class="text-[9px] text-slate-500 block mb-1">النقاط الذهبية</span>
+                        <span class="text-emerald-400 font-black text-sm" id="set-points">0</span>
+                    </div>
+                    <div class="bg-slate-900/50 p-3 rounded-2xl border border-white/5 text-center">
+                        <span class="text-[9px] text-slate-500 block mb-1">الحد الآجل</span>
+                        <span class="text-yellow-500 font-black text-sm" id="set-credit">0.00</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center py-2 border-b border-white/5"><span class="text-xs text-slate-400">الموبيل 2</span><span class="text-sm font-bold text-white font-mono" id="set-phone2">-</span></div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/5"><span class="text-xs text-slate-400">المحافظة</span><span class="text-sm font-bold text-white" id="set-province">-</span></div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/5"><span class="text-xs text-slate-400">العنوان</span><span class="text-sm font-bold text-white truncate w-40 text-left" id="set-address">-</span></div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/5"><span class="text-xs text-slate-400">حماية كود التفعيل</span><span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded-lg font-bold border border-emerald-500/20">محمي بكود تفعيل</span></div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/5"><span class="text-xs text-slate-400">المشرف</span><span class="text-sm font-bold text-blue-400" id="set-supervisor">الإدارة</span></div>
+                    <div class="flex justify-between items-center py-2"><span class="text-xs text-slate-400">نوع الحساب</span><span class="text-sm font-bold text-white">حساب تاجر VIP</span></div>
+                </div>
+            </div>
+
+            <!-- Deposit Report Filter Section -->
+            <div class="bg-slate-800/50 border border-slate-700 rounded-3xl p-5">
+                <h4 class="text-white font-black text-sm mb-4 flex items-center gap-2"><i data-lucide="filter" class="w-4 h-4 text-emerald-400"></i> تقارير الإيداعات</h4>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="col-span-2">
+                        <select id="filt-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white">
+                            <option value="">كل أنواع الإيداعات</option>
+                            <option value="fawry">فوري (بلاس/بريد)</option>
+                            <option value="alex">بنك الاسكندرية</option>
+                            <option value="cairo">بنك القاهرة</option>
+                            <option value="post">البريد المصري</option>
+                            <option value="orange">فروع اورنج (C2C)</option>
+                            <option value="credit">إيداعات آخري / طلب آجل</option>
+                        </select>
+                    </div>
+                    <div>
+                        <input type="date" id="filt-start" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-[10px] text-white">
+                    </div>
+                    <div>
+                        <input type="date" id="filt-end" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-[10px] text-white">
+                    </div>
+                </div>
+                <button onclick="loadDepositReports()" class="w-full bg-emerald-600 font-black text-white p-3 rounded-2xl text-xs mb-4">عرض كشف الإيداعات</button>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-[10px]">
+                        <thead class="text-slate-500 bg-slate-900/50">
+                            <tr><th class="p-2">رقم الطلب</th><th class="p-2">البوابة</th><th class="p-2">القيمة</th><th class="p-2">الحالة</th></tr>
+                        </thead>
+                        <tbody id="deposit-report-table" class="text-white">
+                            <tr><td colspan="4" class="p-8 text-center text-slate-600">حدد الفلتر واضغط عرض</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Connected Devices -->
+            <div class="bg-slate-800/50 border border-slate-700 rounded-3xl p-5">
+                <h4 class="text-white font-black text-sm mb-4 flex items-center gap-2"><i data-lucide="smartphone" class="w-4 h-4 text-blue-400"></i> الأجهزة المتصلة</h4>
+                <div class="space-y-3" id="connected-devices">
+                    <!-- Devices injected here -->
+                </div>
+            </div>
+
+            <!-- OTP Generator -->
+            <div class="bg-slate-800/50 border border-slate-700 rounded-3xl p-5">
+                <h4 class="text-white font-black text-sm mb-4 flex items-center gap-2"><i data-lucide="key" class="w-4 h-4 text-yellow-400"></i> توليد كود وصول جديد</h4>
+                <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-4">
+                    <p class="text-[10px] text-yellow-500 font-bold leading-relaxed text-justify">
+                        الكود العشوائي يسمح بفتح حسابك علي جهاز جديد. لا تعطي هذا الكود لأي شخص مهما كانت صفته حتي لو كان موظف خدمة العملاء. الكود صالح للاستخدام مرة واحدة فقط.
+                    </p>
+                </div>
+                <div id="otp-display" class="bg-slate-900 rounded-2xl p-6 text-center text-3xl font-black text-white font-mono tracking-[0.5em] mb-4 hidden">------</div>
+                <button onclick="generateRandomCode()" class="w-full bg-slate-700 hover:bg-slate-600 font-black text-white p-4 rounded-2xl text-xs transition active:scale-95 shadow-lg">توليد كود شاشة</button>
+            </div>
+
+            <!-- Sound & Language & Theme -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-800/50 border border-slate-700 rounded-3xl p-4 flex flex-col items-center gap-2">
+                    <span class="text-[10px] text-slate-400">التنبيهات الصوتية</span>
+                    <button id="toggle-sound" onclick="toggleSound()" class="bg-blue-600 text-white w-full py-3 rounded-2xl flex items-center justify-center gap-2"><i data-lucide="volume-2" class="w-4 h-4"></i> مفعل</button>
+                </div>
+                <div class="bg-slate-800/50 border border-slate-700 rounded-3xl p-4 flex flex-col items-center gap-2">
+                    <span class="text-[10px] text-slate-400">لغة الواجهة</span>
+                    <button onclick="toggleLang()" class="bg-slate-700 text-white w-full py-3 rounded-2xl font-black">العربية (AR)</button>
+                </div>
+                <div class="col-span-2 bg-slate-800/50 border border-slate-700 rounded-3xl p-4 flex flex-col items-center gap-3">
+                    <span class="text-[10px] text-slate-400">اختبار الأصوات (Success / Error)</span>
+                    <div class="flex gap-3 w-full">
+                        <button onclick="playSound('success')" class="flex-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 py-3 rounded-2xl font-black text-[10px] border border-emerald-500/20 flex items-center justify-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> اختبار النجاح</button>
+                        <button onclick="playSound('error')" class="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 py-3 rounded-2xl font-black text-[10px] border border-red-500/20 flex items-center justify-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4"></i> اختبار الخطأ</button>
+                    </div>
+                </div>
+                <div class="bg-slate-800/50 border border-slate-700 rounded-3xl p-4 flex flex-col items-center gap-2">
+                    <span class="text-[10px] text-slate-400">الوضع البصري</span>
+                    <button id="toggle-theme-btn" onclick="toggleTheme()" class="bg-slate-100 text-slate-900 w-full py-3 rounded-2xl font-black flex items-center justify-center gap-2"><i data-lucide="sun" class="w-4 h-4"></i> نهاراً</button>
+                </div>
+                <div class="bg-slate-800/50 border border-slate-700 rounded-3xl p-4 flex flex-col items-center gap-2">
+                    <span class="text-[10px] text-slate-400">حماية الحساب</span>
+                    <button onclick="openResetModal()" class="bg-indigo-600/20 text-indigo-400 w-full py-3 rounded-2xl font-black flex items-center justify-center gap-2 border border-indigo-500/20 shadow-lg"><i data-lucide="lock" class="w-4 h-4"></i> تغيير السر</button>
+                </div>
+                <div class="bg-slate-800/50 border border-slate-700 rounded-3xl p-4 flex flex-col items-center gap-2">
+                    <span class="text-[10px] text-slate-400">الخروج</span>
+                    <button onclick="logout()" class="bg-red-600/20 text-red-400 w-full py-3 rounded-2xl font-black flex items-center justify-center gap-2 border border-red-500/20"><i data-lucide="log-out" class="w-4 h-4"></i> خروج</button>
+                </div>
+            </div>
+            
+            <div class="text-center text-[10px] text-slate-600 font-mono py-4">Dr Pay v3.1.5 - All Rights Reserved</div>
+        </div>
         
     </main>
+
+    <!-- Password Reset Modal -->
+    <div id="reset-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-800 w-full max-w-sm mx-4 p-7 rounded-[2.5rem] shadow-2xl border border-white/5 scale-95 transition-all duration-300" id="reset-card">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-black text-white flex items-center gap-2"><i data-lucide="shield-check" class="text-indigo-400"></i> حماية الحساب</h3>
+                <button onclick="closeResetModal()" class="text-slate-500 bg-slate-900/50 p-2 rounded-full hover:text-white transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+
+            <!-- STEP 1: VERIFY -->
+            <div id="reset-step-1" class="space-y-4">
+                <p class="text-[10px] text-slate-400 font-bold mb-4 leading-relaxed">يرجي إدخال البيانات التالية للتأكد من هويتك كصاحب للحساب</p>
+                <div>
+                    <label class="block text-[8px] text-indigo-400 mb-2 font-black uppercase tracking-[0.2em]">الرقم القومي (14 رقم)</label>
+                    <input type="number" id="reset-national-id" class="w-full bg-slate-900 border-none rounded-2xl p-4 text-white text-sm font-mono focus:ring-2 focus:ring-indigo-500 transition-all placeholder-white/10" placeholder="29900000000000">
+                </div>
+                <div>
+                    <label class="block text-[8px] text-indigo-400 mb-2 font-black uppercase tracking-[0.2em]">رقم الهاتف المسجل</label>
+                    <input type="tel" id="reset-phone" class="w-full bg-slate-900 border-none rounded-2xl p-4 text-white text-sm font-mono focus:ring-2 focus:ring-indigo-500 transition-all placeholder-white/10" placeholder="01xxxxxxxxx">
+                </div>
+                <button onclick="resetVerifyStep1(event)" class="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-black py-4 rounded-2xl transition shadow-xl active:scale-95">إرسال كود التحقق <i data-lucide="chevron-left" class="inline w-4 h-4 mr-1"></i></button>
+            </div>
+
+            <!-- STEP 2: OTP -->
+            <div id="reset-step-2" class="space-y-5 hidden">
+                <div class="flex flex-col items-center text-center gap-3 py-4">
+                    <div class="w-20 h-20 bg-blue-500/10 rounded-[2rem] flex items-center justify-center text-blue-400 border border-blue-500/20 shadow-inner"><i data-lucide="message-square" class="w-10 h-10"></i></div>
+                    <p class="text-xs text-white font-black">أدخل كود التحقق</p>
+                    <p class="text-[10px] text-slate-500 font-bold leading-relaxed px-4">تم إرسال كود الـ OTP إلي WhatsApp الرقم المسجل تنتهي بـ <span id="reset-phone-last" class="font-mono text-blue-400">...</span></p>
+                </div>
+                <input type="number" id="reset-otp-code" class="w-full bg-slate-900 border-none rounded-2xl p-5 text-center text-3xl font-black text-white font-mono tracking-[0.4em] focus:ring-2 focus:ring-blue-500 transition-all shadow-inner" placeholder="000000">
+                <button onclick="resetVerifyOTP()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl transition shadow-xl active:scale-95">تفعيل كود الوصول <i data-lucide="check-circle" class="inline w-4 h-4 mr-1"></i></button>
+            </div>
+
+            <!-- STEP 3: NEW PASSWORD -->
+            <div id="reset-step-3" class="space-y-4 hidden">
+                <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3 mb-4 text-center">
+                    <p class="text-[10px] text-emerald-400 font-black">تم التحقق من هويتك بنجاح!</p>
+                </div>
+                <div>
+                    <label class="block text-[8px] text-emerald-400 mb-2 font-black uppercase tracking-[0.2em]">كلمة المرور الجديدة</label>
+                    <input type="password" id="reset-new-pass" class="w-full bg-slate-900 border-none rounded-2xl p-4 text-white text-sm focus:ring-2 focus:ring-emerald-500 transition-all placeholder-white/10" placeholder="********">
+                </div>
+                <div>
+                    <label class="block text-[8px] text-emerald-400 mb-2 font-black uppercase tracking-[0.2em]">تأكيد كلمة المرور</label>
+                    <input type="password" id="reset-new-pass-confirm" class="w-full bg-slate-900 border-none rounded-2xl p-4 text-white text-sm focus:ring-2 focus:ring-emerald-500 transition-all placeholder-white/10" placeholder="********">
+                </div>
+                <button onclick="resetFinalUpdate()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-2xl transition shadow-xl active:scale-95 shadow-emerald-900/40">تحديث كلمة المرور <i data-lucide="refresh-cw" class="inline w-4 h-4 mr-1"></i></button>
+            </div>
+        </div>
+    </div>
 
     <!-- Services List Modal (When clicking a category) -->
     <div id="services-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-end justify-center hidden opacity-0 transition-all duration-300">
@@ -135,39 +446,15 @@
         </div>
     </div>
 
-    <!-- Payment Process Modal -->
-    <div id="payment-modal" class="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[60] flex items-end justify-center hidden opacity-0 transition-all duration-300">
-        <div class="bg-slate-800 border-t border-slate-700 w-full max-w-md rounded-t-3xl p-6 shadow-2xl relative translate-y-full transition-transform duration-300" id="payment-card">
-            <button onclick="closePayment()" class="absolute top-4 left-4 text-slate-400 hover:text-white bg-slate-700 rounded-full p-2"><i data-lucide="x" class="w-4 h-4"></i></button>
-            <div id="pay-step-1">
-                <div class="w-12 h-12 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center mb-3 border border-blue-500/20"><i data-lucide="receipt" class="w-6 h-6"></i></div>
-                <h3 class="text-xl font-bold text-white mb-1" id="modal-srv-name">دفع خدمة</h3>
-                <p class="text-emerald-400 font-black tracking-widest font-mono text-2xl mb-6" id="modal-srv-price">0.00 <span class="text-sm">ج.م</span></p>
-                
-                <form id="pay-form" class="space-y-4">
-                    <input type="hidden" id="pay-srv-id">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-2">رقم هاتف العميل</label>
-                        <input type="tel" id="pay-phone" required class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3.5 font-mono focus:border-blue-500 transition-all">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-2">الرقم المرجعي للإيصال / الاستعلام</label>
-                        <input type="text" id="pay-ref" class="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3.5 font-mono focus:border-blue-500 transition-all">
-                    </div>
-                    <button type="submit" id="pay-exec-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 mt-4 transition-all active:scale-95">
-                        تأكيد وإتمام الدفع <i data-lucide="check-circle" class="w-5 h-5"></i>
-                    </button>
-                    <div id="pay-error" class="hidden text-red-400 bg-red-500/10 border border-red-500 p-3 rounded-xl text-xs font-bold text-center mt-2"></div>
-                </form>
+    <!-- Notifications Modal -->
+    <div id="notif-modal" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[60] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-[2rem] p-6 shadow-2xl m-4 scale-95 transition-transform duration-300" id="notif-card">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-black text-white flex items-center gap-2"><i data-lucide="bell" class="text-blue-400"></i> الإشعارات</h3>
+                <button onclick="closeNotifications()" class="text-slate-400 hover:text-white bg-slate-700 rounded-full p-2"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
-            
-            <div id="pay-step-2" class="hidden text-center py-6">
-                <div class="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/40 mb-4 animate-bounce border-4 border-slate-800">
-                    <i data-lucide="check" class="text-white w-10 h-10"></i>
-                </div>
-                <h3 class="text-2xl font-black text-white mb-2">تمت العملية بنجاح!</h3>
-                <p class="text-slate-400 mb-6 text-sm">عملية الدفع تم تسجيلها بنجاح وجاري تنفيذها، تم خصم الرصيد تلقائياً.</p>
-                <a href="#" id="view-invoice-btn" class="block w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 rounded-xl transition shadow-lg">مشاهدة الإيصال ومشاركته</a>
+            <div id="notif-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 pb-4">
+                <div class="text-center py-10 text-slate-500 font-bold">لا توجد إشعارات حالياً</div>
             </div>
         </div>
     </div>
@@ -177,96 +464,174 @@
         <div class="flex justify-around items-center h-16 max-w-md mx-auto px-2">
             <button onclick="openView('home')" id="nav-home" class="flex flex-col items-center gap-1 w-16 text-blue-500 nav-btn transition-colors"><i data-lucide="home" class="w-5 h-5"></i><span class="text-[10px] font-bold">الرئيسية</span></button>
             <button onclick="openView('reports')" id="nav-reports" class="flex flex-col items-center gap-1 w-16 text-slate-500 nav-btn hover:text-white transition-colors"><i data-lucide="file-text" class="w-5 h-5"></i><span class="text-[10px] font-bold">التقارير</span></button>
-            <button onclick="openView('wallet')" id="nav-wallet" class="flex flex-col items-center gap-1 w-16 text-slate-500 nav-btn hover:text-white transition-colors"><i data-lucide="wallet" class="w-5 h-5"></i><span class="text-[10px] font-bold">شحن الرصيد</span></button>
-            <button onclick="logout()" class="flex flex-col items-center gap-1 w-16 text-red-500/70 nav-btn hover:text-red-400 transition-colors"><i data-lucide="log-out" class="w-5 h-5"></i><span class="text-[10px] font-bold">خروج</span></button>
+            <button onclick="openView('wallet')" id="nav-wallet" class="flex flex-col items-center gap-1 w-16 text-slate-500 nav-btn hover:text-white transition-colors"><i data-lucide="wallet" class="w-5 h-5"></i><span class="text-[10px] font-bold">الإيداعات</span></button>
+            <button onclick="openView('settings')" id="nav-settings" class="flex flex-col items-center gap-1 w-16 text-slate-500 nav-btn hover:text-white transition-colors"><i data-lucide="settings" class="w-5 h-5"></i><span class="text-[10px] font-bold">الإعدادات</span></button>
         </div>
     </nav>
 
     <script>
         let currentUser = null;
         let servicesList = [];
+        let isSoundEnabled = localStorage.getItem('drpay_sound') !== 'false';
         
-        const categories = [
-            { name: "شحن الموبيل", icon: "smartphone", color: "text-emerald-400" },
-            { name: "كروت الشحن", icon: "credit-card", color: "text-blue-400" },
-            { name: "شحن الفكة", icon: "battery-charging", color: "text-orange-400" },
-            { name: "تجديد الباقة", icon: "refresh-cw", color: "text-purple-400" },
-            { name: "فواتير الموبيل", icon: "receipt", color: "text-red-400" },
-            { name: "الانترنت والارضي", icon: "wifi", color: "text-cyan-400" },
-            { name: "شحن المحافظ", icon: "wallet", color: "text-emerald-500" },
-            { name: "التعليم", icon: "graduation-cap", color: "text-yellow-400" },
-            { name: "المرافق العامة", icon: "droplet", color: "text-blue-300" },
-            { name: "خدمات التأمين", icon: "shield", color: "text-indigo-400" },
-            { name: "نقل وسياحة", icon: "bus", color: "text-teal-400" },
-            { name: "معاملات مالية", icon: "briefcase", color: "text-amber-500" },
-            { name: "الاون لاين", icon: "globe", color: "text-blue-500" },
-            { name: "اشتراكات وتبرعات", icon: "heart", color: "text-rose-400" },
-            { name: "اقساط وقروض", icon: "landmark", color: "text-emerald-600" },
-            { name: "خدمات حكومية", icon: "building", color: "text-slate-400" },
-            { name: "خدمات متنوعة", icon: "layers", color: "text-fuchsia-400" },
-            { name: "خدمات التاجر", icon: "store", color: "text-orange-500" },
-            { name: "خدمات آخري", icon: "more-horizontal", color: "text-slate-500" },
-            { name: "المتجر", icon: "shopping-cart", color: "text-pink-400" },
-            { name: "المسابقات", icon: "award", color: "text-yellow-500" }
-        ];
+        const sounds = {
+            success: new Audio('sounds/success.mp3'),
+            error: new Audio('sounds/error.mp3')
+        };
+
+        async function fetchAPI(endpoint, method = 'GET', body = null) {
+            const token = localStorage.getItem('drpay_token');
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+            const options = { method, headers };
+            if (body) options.body = JSON.stringify(body);
+            try {
+                const response = await fetch(`/api/index.js?action=${endpoint}`, options);
+                const data = await response.json();
+                if (!response.ok) {
+                    if (response.status === 401) logout();
+                    toast(data.error || 'خطأ في العملية');
+                    return null;
+                }
+                return data;
+            } catch (error) { return null; }
+        }
+
+        // Password Reset Functions
+        function openResetModal() {
+            document.getElementById('reset-modal').classList.remove('hidden');
+            setTimeout(() => { 
+                document.getElementById('reset-modal').classList.add('opacity-100'); 
+                document.getElementById('reset-card').classList.remove('scale-95'); 
+            }, 10);
+            document.getElementById('reset-step-1').classList.remove('hidden');
+            document.getElementById('reset-step-2').classList.add('hidden');
+            document.getElementById('reset-step-3').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function closeResetModal() {
+            document.getElementById('reset-modal').classList.remove('opacity-100');
+            document.getElementById('reset-card').classList.add('scale-95');
+            setTimeout(() => { document.getElementById('reset-modal').classList.add('hidden'); }, 300);
+        }
+
+        async function resetVerifyStep1(event) {
+            const id = document.getElementById('reset-national-id').value;
+            const phone = document.getElementById('reset-phone').value;
+            if (id.length !== 14 || phone.length < 11) return toast('يرجي التأكد من صحة البيانات');
+            
+            const btn = event.currentTarget;
+            btn.innerHTML = '<i data-lucide="loader" class="animate-spin w-4 h-4"></i> جاري التحقق...';
+            lucide.createIcons();
+
+            const res = await fetchAPI('request_password_reset', 'POST', { national_id: id, phone: phone });
+            btn.innerHTML = 'إرسال كود التحقق <i data-lucide="chevron-left" class="inline w-4 h-4 mr-1"></i>';
+            lucide.createIcons();
+
+            if (res && res.success) {
+                document.getElementById('reset-step-1').classList.add('hidden');
+                document.getElementById('reset-step-2').classList.remove('hidden');
+                document.getElementById('reset-phone-last').textContent = phone.slice(-4);
+                toast('تم إرسال كود التحقق بنجاح');
+                lucide.createIcons();
+            }
+        }
+
+        async function resetVerifyOTP() {
+            const code = document.getElementById('reset-otp-code').value;
+            if (code.length !== 6) return toast('الكود غير مكتمل');
+            
+            const res = await fetchAPI('verify_password_reset_otp', 'POST', { code: code });
+            if (res && res.success) {
+                document.getElementById('reset-step-2').classList.add('hidden');
+                document.getElementById('reset-step-3').classList.remove('hidden');
+                toast('تم التحقق من الكود بنجاح');
+                lucide.createIcons();
+            }
+        }
+
+        async function resetFinalUpdate() {
+            const p1 = document.getElementById('reset-new-pass').value;
+            const p2 = document.getElementById('reset-new-pass-confirm').value;
+            if (p1.length < 4) return toast('كلمة المرور قصيرة جداً');
+            if (p1 !== p2) return toast('كلمات المرور غير متطابقة');
+            
+            const res = await fetchAPI('change_password_final', 'POST', { password: p1 });
+            if (res && res.success) {
+                toast('🎉 تم تغيير كلمة المرور بنجاح');
+                closeResetModal();
+            }
+        }
 
         window.addEventListener('DOMContentLoaded', () => {
-            renderCategories();
-            lucide.createIcons();
             const userStr = localStorage.getItem('drpay_user');
             if(!userStr) { window.location.href = 'login.html'; return; }
             currentUser = JSON.parse(userStr);
-            getAppInfo();
+            loadMe();
+            loadCategories();
+            setInterval(loadMe, 10000); // Auto refresh balance
+            lucide.createIcons();
         });
 
-        function renderCategories() {
-            const grid = document.getElementById('categories-grid');
-            categories.forEach(cat => {
-                grid.innerHTML += `
-                    <div onclick="openServicesModal('${cat.name}')" class="cat-card rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition">
-                        <i data-lucide="${cat.icon}" class="${cat.color} w-7 h-7 mb-2"></i>
-                        <h3 class="font-bold text-white text-[10px] sm:text-xs leading-tight">${cat.name}</h3>
-                    </div>
-                `;
-            });
-        }
-
-        function logout() { localStorage.removeItem('drpay_user'); localStorage.removeItem('drpay_token'); window.location.href = 'login.html'; }
-
-        function openView(v) {
-            ['home','reports','wallet'].forEach(id => {
-                document.getElementById(`view-${id}`).classList.add('hidden-view');
-                document.getElementById(`nav-${id}`).classList.replace('text-blue-500', 'text-slate-500');
-            });
-            document.getElementById(`view-${v}`).classList.remove('hidden-view');
-            document.getElementById(`nav-${v}`).classList.replace('text-slate-500', 'text-blue-500');
-        }
-
-        async function getAppInfo() {
-            try {
-                // Balance
-                fetch(`/api?action=me&user_id=${currentUser.id}`).then(r=>r.json()).then(d=>{ if(d.success) document.getElementById('user-balance').innerHTML = `${parseFloat(d.balance).toFixed(2)} <span class="text-[10px] text-emerald-300">ج.م</span>`; });
+        async function loadMe() {
+            const data = await fetchAPI('me');
+            if(data) {
+                currentUser = data.user;
+                document.getElementById('user-balance').innerHTML = `${data.user.balance.toFixed(2)} <span class="text-[10px] text-emerald-300">ج.م</span>`;
+                document.getElementById('header-shop-name').textContent = data.user.shop_name || data.user.name;
                 
-                // Services
-                const sres = await fetch(`/api?action=admin/services`); const sdata = await sres.json();
-                if(sdata.success) {
-                    servicesList = sdata.services;
-                    document.getElementById('services-count').textContent = servicesList.length;
-                    // Pre-render services list so they are ready when modal opens
-                    renderServicesList(servicesList);
+                // Settings Fields
+                if (document.getElementById('set-user-name')) {
+                    document.getElementById('set-user-name').textContent = data.user.name;
+                    document.getElementById('set-shop-name').textContent = data.user.shop_name || '-';
+                    document.getElementById('set-points').textContent = data.user.golden_points || 0;
+                    document.getElementById('set-credit').textContent = (data.user.credit_limit || 0).toFixed(2);
+                    document.getElementById('set-phone2').textContent = data.user.phone2 || '-';
+                    document.getElementById('set-province').textContent = data.user.province || '-';
+                    document.getElementById('set-address').textContent = data.user.address || '-';
                 }
 
-                // Deposits
-                fetch(`/api?action=deposits`).then(r=>r.json()).then(d => {
-                    if(d.success) {
-                        const sel = document.getElementById('dep-method'); sel.innerHTML = '<option value="">-- اختر بوابة الدفع --</option>';
+                // Load deposits, transactions, notifications, devices
+                fetchAPI('me/notifications').then(n => {
+                    if (n && n.notifications) {
+                        const list = document.getElementById('notif-list');
+                        if (n.notifications.length > 0) {
+                            list.innerHTML = '';
+                            n.notifications.forEach(nt => {
+                                list.innerHTML += `<div class="bg-slate-700/50 p-4 rounded-2xl border border-white/5"><h4 class="text-white text-xs font-black mb-1">${nt.title}</h4><p class="text-[10px] text-slate-400 leading-relaxed">${nt.message}</p><span class="text-[8px] text-slate-500 font-mono mt-2 block">${new Date(nt.created_at).toLocaleString('ar-EG')}</span></div>`;
+                            });
+                            document.getElementById('notif-badge').classList.remove('hidden');
+                        }
+                    }
+                });
+
+                fetchAPI('me/devices').then(d => {
+                    const list = document.getElementById('connected-devices');
+                    if (list && d && d.devices) {
+                        list.innerHTML = '';
+                        d.devices.forEach(dv => {
+                            list.innerHTML += `<div class="flex items-center justify-between bg-slate-900/50 p-3 rounded-2xl border border-white/5 shadow-inner">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/10"><i data-lucide="smartphone" class="w-4 h-4"></i></div>
+                                    <div class="flex flex-col"><span class="text-[11px] text-white font-bold">${dv.device_info || 'Unknown'}</span><span class="text-[8px] text-slate-500 font-mono">${dv.location || '-'}</span></div>
+                                </div>
+                                <div class="text-left font-mono text-[8px] text-slate-500 text-end">مرات الدخول: ${dv.login_count || 1}<br>اخر دخول: ${new Date(dv.created_at).toLocaleDateString('ar-EG')}</div>
+                            </div>`;
+                        });
+                        lucide.createIcons();
+                    }
+                });
+
+                fetchAPI('me/deposits').then(d => {
+                    if(d && d.methods) {
+                        const sel = document.getElementById('dep-method');
+                        sel.innerHTML = '<option value="">-- اختر بوابة الدفع --</option>';
                         d.methods.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.name} (${m.account_number})</option>`);
                     }
                 });
 
-                // Transactions
-                fetch(`/api?action=transactions&user_id=${currentUser.id}`).then(r=>r.json()).then(d => {
-                    if(d.success && d.transactions.length > 0) {
+                fetchAPI('me/transactions').then(d => {
+                    if(d && d.success && d.transactions.length > 0) {
                         const list = document.getElementById('reports-list'); list.innerHTML = '';
                         d.transactions.forEach(t => {
                             const st = t.status === 'paid' ? '<span class="text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded text-[10px] font-bold">معتمدة</span>' : '<span class="text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded text-[10px] font-bold">معلقة</span>';
@@ -280,121 +645,318 @@
                                         <div class="font-black text-blue-400 font-mono text-lg tracking-wider">${t.total}</div>
                                         <div class="text-left">${st}</div>
                                     </div>
-                                    <a href="invoice.html?id=${t.invoice_no}" class="bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white hover:bg-slate-700 transition shadow"><i data-lucide="printer" class="w-5 h-5"></i></a>
-                                </div>
-                            `;
+                                    <a href="invoice.html?id=${t.invoice_no}" target="_blank" class="bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white hover:bg-slate-700 transition shadow"><i data-lucide="printer" class="w-5 h-5"></i></a>
+                                </div>`;
                         });
                         lucide.createIcons();
                     }
                 });
-            } catch(e) {}
+            }
         }
 
-        function renderServicesList(list) {
-            const container = document.getElementById('cat-services-list');
-            if (list.length === 0) {
-                container.innerHTML = '<div class="text-center font-bold text-slate-500 py-10">لا توجد خدمات متاحة في هذا القسم حالياً.</div>';
-                return;
+        function searchServices(query) {
+            const grid = document.getElementById('categories-grid');
+            const searchVal = query.toLowerCase().trim();
+            if (!searchVal) { loadCategories(); return; }
+            
+            grid.innerHTML = '<div class="col-span-3 lg:col-span-5 text-center p-10 text-slate-500 font-bold">جاري البحث في الخدمات...</div>';
+            
+            const filtered = servicesList.filter(s => s.name.toLowerCase().includes(searchVal) || (s.service_code && s.service_code.toString().includes(searchVal)));
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="col-span-3 lg:col-span-5 text-center p-10 text-slate-500 font-bold">لا توجد خدمات مطابقة للبحث</div>';
+            } else {
+                grid.innerHTML = '';
+                filtered.forEach(s => {
+                    grid.innerHTML += `<div onclick='prepPayment(${JSON.stringify(s)})' class="bg-slate-800/80 border border-white/5 p-4 rounded-3xl flex items-center justify-between cursor-pointer transition active:scale-95 shadow-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/10"><i data-lucide="zap" class="w-5 h-5"></i></div>
+                            <div class="flex flex-col"><span class="text-xs font-black text-white">${s.name}</span><span class="text-[9px] text-slate-400">${s.category || 'عام'}</span></div>
+                        </div>
+                        <div class="text-left"><span class="text-sm font-black text-emerald-400 font-mono">${s.price || '0.00'}</span></div>
+                    </div>`;
+                });
+                lucide.createIcons();
             }
-            container.innerHTML = '';
-            list.forEach(srv => {
-                const col = srv.company === 'Vodafone' ? 'from-red-600 to-red-500 shadow-red-500/30' : (srv.company === 'WE' ? 'from-purple-600 to-purple-500 shadow-purple-500/30' : 'from-blue-600 to-blue-500 shadow-blue-500/30');
-                container.innerHTML += `
-                    <div onclick="openPayment('${srv.id}', '${srv.name}', '${srv.price}')" class="bg-slate-900 border border-slate-700 rounded-2xl p-3 flex items-center gap-4 cursor-pointer hover:bg-slate-800 transition active:scale-95">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${col} flex items-center justify-center shadow-lg shrink-0">
-                            <i data-lucide="zap" class="text-white w-6 h-6"></i>
-                        </div>
-                        <div class="flex-1">
-                            <h3 class="font-bold text-white text-sm leading-tight">${srv.name}</h3>
-                            <p class="text-slate-400 font-mono text-xs font-bold mt-1">${srv.price} ج.م</p>
-                        </div>
-                        <i data-lucide="chevron-left" class="text-slate-500"></i>
-                    </div>
-                `;
-            });
+        }
+
+        async function loadDepositReports() {
+            const type = document.getElementById('filt-type').value;
+            const start = document.getElementById('filt-start').value;
+            const end = document.getElementById('filt-end').value;
+            const res = await fetchAPI(`me/deposit_reports?type=${type}&start=${start}&end=${end}`);
+            if (res && res.deposits) {
+                const tbody = document.getElementById('deposit-report-table');
+                tbody.innerHTML = '';
+                if (res.deposits.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-slate-500">لا توجد سجلات مطابقة</td></tr>';
+                } else {
+                    res.deposits.forEach(d => {
+                        const statusClass = d.status === 'approved' ? 'text-emerald-400' : (d.status === 'pending' ? 'text-yellow-400' : 'text-red-400');
+                        tbody.innerHTML += `<tr class="border-b border-white/5"><td class="p-2 font-mono">#${d.id.toString().slice(-4)}</td><td class="p-2">${d.deposit_methods?.name || '-'}</td><td class="p-2 font-black">${d.amount}</td><td class="p-2 font-bold ${statusClass}">${d.status === 'approved' ? 'مكتمل' : (d.status === 'pending' ? 'جاري' : 'مرفوض')}</td></tr>`;
+                    });
+                }
+            }
+        }
+
+        async function generateRandomCode() {
+            const res = await fetchAPI('generate_random_code', 'POST');
+            if (res && res.code) {
+                const display = document.getElementById('otp-display');
+                display.textContent = res.code;
+                display.classList.remove('hidden');
+                setTimeout(() => { display.classList.add('hidden'); }, 30000); // Hide after 30s
+            }
+        }
+
+        function playSound(type) {
+            if (isSoundEnabled && sounds[type]) {
+                sounds[type].play().catch(e => console.log('Audio error:', e));
+            }
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            localStorage.setItem('drpay_sound', isSoundEnabled);
+            const btn = document.getElementById('toggle-sound');
+            btn.innerHTML = isSoundEnabled ? '<i data-lucide="volume-2" class="w-4 h-4"></i> مفعل' : '<i data-lucide="volume-x" class="w-4 h-4"></i> صامت';
+            btn.className = isSoundEnabled ? 'bg-blue-600 text-white w-full py-3 rounded-2xl flex items-center justify-center gap-2' : 'bg-slate-700 text-slate-400 w-full py-3 rounded-2xl flex items-center justify-center gap-2';
             lucide.createIcons();
         }
 
-        function openServicesModal(catName) {
-            document.getElementById('modal-cat-name').textContent = catName;
-            
-            // In a real DB scenario, we would filter services by Category.
-            // For now, since services don't have categories, we just show all services
-            renderServicesList(servicesList);
+        function openNotifications() { 
+            document.getElementById('notif-modal').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('notif-modal').classList.replace('opacity-0', 'opacity-100'); document.getElementById('notif-card').classList.replace('scale-95', 'scale-100'); }, 10);
+            document.getElementById('notif-badge').classList.add('hidden');
+        }
+        function closeNotifications() {
+            document.getElementById('notif-modal').classList.replace('opacity-100', 'opacity-0'); document.getElementById('notif-card').classList.replace('scale-100', 'scale-95');
+            setTimeout(() => { document.getElementById('notif-modal').classList.add('hidden'); }, 300);
+        }
 
-            document.getElementById('services-modal').classList.remove('hidden');
-            setTimeout(() => { 
-                document.getElementById('services-modal').classList.remove('opacity-0'); 
-                document.getElementById('services-card').classList.remove('translate-y-full'); 
-            }, 10);
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('bg-slate-950');
+            if (isDark) {
+                document.body.classList.replace('bg-slate-950', 'bg-slate-50');
+                document.body.classList.replace('text-slate-100', 'text-slate-900');
+                localStorage.setItem('drpay_theme', 'light');
+            } else {
+                document.body.classList.replace('bg-slate-50', 'bg-slate-950');
+                document.body.classList.replace('text-slate-900', 'text-slate-100');
+                localStorage.setItem('drpay_theme', 'dark');
+            }
+            updateThemeUI();
+        }
+
+        function updateThemeUI() {
+            const isDark = localStorage.getItem('drpay_theme') !== 'light';
+            const btn = document.getElementById('toggle-theme-btn');
+            if (!btn) return;
+            if (isDark) {
+                document.body.classList.add('bg-slate-950', 'text-slate-100');
+                btn.innerHTML = '<i data-lucide="moon" class="w-4 h-4"></i> ليلاً';
+                btn.className = 'bg-slate-800 text-blue-400 w-full py-3 rounded-2xl font-black flex items-center justify-center gap-2 border border-white/5';
+            } else {
+                document.body.classList.remove('bg-slate-950', 'text-slate-100');
+                document.body.classList.add('bg-slate-50', 'text-slate-900');
+                btn.innerHTML = '<i data-lucide="sun" class="w-4 h-4"></i> نهاراً';
+                btn.className = 'bg-white text-orange-500 w-full py-3 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg border border-orange-100';
+            }
+            lucide.createIcons();
+        }
+
+        // Initialize theme On Load
+        window.addEventListener('load', () => {
+            if (localStorage.getItem('drpay_theme') === 'light') {
+                document.body.classList.remove('bg-slate-950', 'text-slate-100');
+                document.body.classList.add('bg-slate-50', 'text-slate-900');
+            }
+            updateThemeUI();
+        });
+        function toggleLang() { toast('سيتم تفعيل اللغة الإنجليزية قريباً'); }
+
+        async function loadCategories() {
+            const data = await fetchAPI('me/categories');
+            const srvData = await fetchAPI('me/services');
+            if (srvData && srvData.services) servicesList = srvData.services;
+
+            if(data) {
+                const grid = document.getElementById('categories-grid');
+                grid.innerHTML = `<div onclick="openCardsModal()" class="cat-card group rounded-[2.5rem] p-4 flex flex-col items-center justify-center gap-3 transition-all duration-300 relative overflow-hidden h-32 md:h-40 cursor-pointer shadow-lg shadow-emerald-900/10">
+                    <div class="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="w-12 h-12 md:w-16 md:h-16 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:scale-110 group-hover:rotate-6 transition-all border border-emerald-500/30">
+                        <i data-lucide="ticket" class="w-6 h-6 md:w-8 md:h-8"></i>
+                    </div>
+                    <span class="text-[10px] md:text-sm font-black text-white group-hover:text-emerald-400 text-center transition-colors">كروت الشحن</span>
+                </div>`;
+
+                data.categories.forEach(c => {
+                    grid.innerHTML += `<div onclick="openServicesModal('${c.name}')" class="cat-card group rounded-[2.5rem] p-4 flex flex-col items-center justify-center gap-3 transition-all duration-300 relative overflow-hidden h-32 md:h-40 cursor-pointer shadow-lg shadow-blue-900/10">
+                        <div class="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="w-12 h-12 md:w-16 md:h-16 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:scale-110 group-hover:rotate-6 transition-all border border-blue-500/30">
+                            <i data-lucide="${c.icon || 'layout-grid'}" class="w-6 h-6 md:w-8 md:h-8"></i>
+                        </div>
+                        <span class="text-[10px] md:text-sm font-black text-white group-hover:text-blue-400 text-center transition-colors">${c.name}</span>
+                    </div>`;
+                });
+                lucide.createIcons();
+            }
+        }
+
+        async function openServicesModal(catName) {
+            const modal = document.getElementById('services-modal');
+            const card = document.getElementById('services-card');
+            document.getElementById('modal-cat-name').textContent = catName;
+            const list = document.getElementById('cat-services-list');
+            list.innerHTML = `<div class="p-10 text-center"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-500 mx-auto"></i></div>`;
+            lucide.createIcons();
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.add('opacity-100'); card.classList.remove('translate-y-full'); }, 10);
+
+            const services = await fetchAPI('me/services');
+            if(services) {
+                const filtered = catName === 'كل الخدمات' ? services : services.filter(s => s.category === catName);
+                list.innerHTML = '';
+                filtered.forEach(s => {
+                    list.innerHTML += `<div onclick='prepPayment(${JSON.stringify(s)})' class="bg-slate-700/50 hover:bg-slate-700 p-4 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer transition active:scale-95">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-blue-400 shadow-inner overflow-hidden border border-white/5"><img src="logo/logo.png" class="w-10 h-10 object-contain opacity-40"></div>
+                            <div class="flex flex-col"><span class="text-sm font-black text-white">${s.name}</span><span class="text-[9px] text-slate-400">${s.description || 'خدمة فورية'}</span></div>
+                        </div>
+                        <div class="flex flex-col items-end"><span class="text-xs font-mono font-black text-emerald-400">${s.price || '0.00'} ج.م</span><span class="text-[8px] text-slate-500">رسوم: ${s.fee || '0.00'}</span></div>
+                    </div>`;
+                });
+                lucide.createIcons();
+            }
         }
 
         function closeServicesModal() {
-            document.getElementById('services-card').classList.add('translate-y-full');
-            document.getElementById('services-modal').classList.add('opacity-0');
-            setTimeout(() => document.getElementById('services-modal').classList.add('hidden'), 300);
+            const modal = document.getElementById('services-modal');
+            const card = document.getElementById('services-card');
+            modal.classList.remove('opacity-100'); card.classList.add('translate-y-full');
+            setTimeout(() => { modal.classList.add('hidden'); }, 300);
         }
 
-        // Deposit Setup
+        // ===== CARDS =====
+        async function openCardsModal() {
+            const modal = document.getElementById('card-modal');
+            const select = document.getElementById('card-select');
+            select.innerHTML = '<option value="">جاري جلب المتاح...</option>';
+            modal.classList.remove('hidden');
+            const data = await fetchAPI('me/available_cards');
+            if(data) {
+                select.innerHTML = '<option value="">اختر الكارت المطلوب</option>';
+                data.forEach(c => { select.innerHTML += `<option value="${c.category}|${c.denomination}">${c.category} - فئة ${c.denomination} ج.م</option>`; });
+            }
+        }
+        function closeCardModal() { document.getElementById('card-modal').classList.add('hidden'); }
+        document.getElementById('card-purchase-form').addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const val = document.getElementById('card-select').value;
+            if(!val) return;
+            const btn = e.target.querySelector('button'); btn.disabled=true; btn.textContent='جاري المعالجة...';
+            const [category, denomination] = val.split('|');
+            const res = await fetchAPI('me/buy_card', 'POST', { category, denomination });
+            if(res && res.success) {
+                closeCardModal();
+                showReceipt({ service_name: `كارت شحن ${category}`, number: 'مخزن الكروت', amount: denomination, fee: 1.5, total: parseFloat(denomination)+1.5, details: `كود: ${res.card.code} | سيريال: ${res.card.serial_number||'-'}`, ref: 'SCR-'+Date.now().toString().slice(-6) });
+                loadMe();
+            } else { alert(res?.error || 'فشلت العملية'); }
+            btn.disabled=false; btn.textContent='تأكيد شراء الكود';
+        });
+
+        // ===== DEPOSIT =====
+        let depositImageBase64 = '';
+        function handleDepositImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) { alert('الصورة كبيرة'); return; }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                depositImageBase64 = e.target.result;
+                document.getElementById('dep-img-placeholder').classList.add('hidden');
+                document.getElementById('dep-img-preview').classList.remove('hidden');
+                document.getElementById('dep-img-thumb').src = depositImageBase64;
+            };
+            reader.readAsDataURL(file);
+        }
         document.getElementById('deposit-form').addEventListener('submit', async(e) => {
             e.preventDefault();
-            const btn = document.getElementById('dep-btn'); btn.disabled = true; btn.innerHTML = 'جاري الإرسال...';
-            const res = await fetch('/api?action=deposits', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({ user_id: currentUser.id, method_id: document.getElementById('dep-method').value, amount: document.getElementById('dep-amount').value, transfer_ref: document.getElementById('dep-ref').value })
-            });
-            const data = await res.json();
-            const resDiv = document.getElementById('dep-res'); resDiv.classList.remove('hidden');
-            if(data.success) { resDiv.className = 'text-center text-sm font-bold mt-2 text-emerald-400'; resDiv.textContent = 'تم الإرسال لمدير النظام للمراجعة'; document.getElementById('deposit-form').reset(); }
-            else { resDiv.className = 'text-center text-sm font-bold mt-2 text-red-400'; resDiv.textContent = data.error; }
-            btn.disabled = false; btn.innerHTML = 'إرسال الإشعار <i data-lucide="send" class="w-4 h-4 inline"></i>';
+            if (!depositImageBase64) return alert('ارفع الصورة');
+            const btn = document.getElementById('dep-btn'); btn.disabled = true;
+            const res = await fetchAPI('me/deposits', 'POST', { method_id: document.getElementById('dep-method').value, amount: document.getElementById('dep-amount').value, transfer_ref: document.getElementById('dep-ref').value, transfer_image: depositImageBase64 });
+            if(res) { alert('تم الإرسال'); e.target.reset(); }
+            btn.disabled = false;
         });
 
-        // Payment Process
-        function openPayment(id, name, price) {
-            closeServicesModal(); // Close services list to show payment modal clearly
-            
-            setTimeout(() => {
-                document.getElementById('pay-srv-id').value = id;
-                document.getElementById('modal-srv-name').textContent = name;
-                document.getElementById('modal-srv-price').innerHTML = `${price} <span class="text-sm text-slate-400">ج.م</span>`;
-                document.getElementById('payment-modal').classList.remove('hidden');
-                document.getElementById('pay-step-1').classList.remove('hidden');
-                document.getElementById('pay-step-2').classList.add('hidden');
-                setTimeout(() => { 
-                    document.getElementById('payment-modal').classList.remove('opacity-0'); 
-                    document.getElementById('payment-card').classList.remove('translate-y-full'); 
-                }, 10);
-            }, 300);
+        // ===== PAYMENT =====
+        let currentService = null;
+        function prepPayment(service) {
+            currentService = service;
+            document.getElementById('pay-service-name').textContent = service.name;
+            document.getElementById('pay-amount-display').innerHTML = `${service.price} <span class="text-xs">ج.م</span>`;
+            document.getElementById('pay-amount-input-div').className = (service.price > 0) ? 'hidden' : 'relative';
+            document.getElementById('payment-modal').classList.remove('hidden');
+            lucide.createIcons();
         }
-        function closePayment() {
-            document.getElementById('payment-card').classList.add('translate-y-full');
-            document.getElementById('payment-modal').classList.add('opacity-0');
-            setTimeout(() => document.getElementById('payment-modal').classList.add('hidden'), 300);
-            document.getElementById('pay-form').reset();
-            document.getElementById('pay-error').classList.add('hidden');
-        }
-
-        document.getElementById('pay-form').addEventListener('submit', async(e) => {
+        function closePaymentModal() { document.getElementById('payment-modal').classList.add('hidden'); }
+        document.getElementById('payment-form').addEventListener('submit', async(e) => {
             e.preventDefault();
-            const btn = document.getElementById('pay-exec-btn'); btn.disabled = true; btn.innerHTML = 'جاري التنفيذ...';
-            try {
-                const res = await fetch('/api?action=pay', {
-                    method:'POST', headers:{'Content-Type':'application/json'},
-                    body:JSON.stringify({ phone: document.getElementById('pay-phone').value, name: currentUser.name, service_id: document.getElementById('pay-srv-id').value, amount: 0, service_data: { ref_number: document.getElementById('pay-ref').value } })
-                });
-                const data = await res.json();
-                if(data.success) {
-                    document.getElementById('pay-step-1').classList.add('hidden');
-                    document.getElementById('pay-step-2').classList.remove('hidden');
-                    document.getElementById('view-invoice-btn').href = `invoice.html?id=${data.invoice_no}`;
-                    getAppInfo(); // Refresh Balance
-                } else { throw new Error(data.error || 'فشل الاتصال بالخادم'); }
-            } catch(error) {
-                const errDiv = document.getElementById('pay-error'); errDiv.classList.remove('hidden'); errDiv.textContent = error.message;
+            const btn = document.getElementById('pay-confirm-btn');
+            const num = document.getElementById('pay-number').value;
+            const amt = currentService.price > 0 ? currentService.price : document.getElementById('pay-amount-val').value;
+            btn.disabled = true; btn.innerHTML = 'جاري التنفيذ...';
+            const res = await fetchAPI('me/pay', 'POST', { service_id: currentService.id, target: num, amount: amt });
+            if(res && res.success) {
+                closePaymentModal(); closeServicesModal();
+                playSound('success');
+                showReceipt({ service_name: currentService.name, number: num, amount: amt, fee: currentService.fee || 0, total: res.transaction.amount, details: currentService.description || currentService.name, ref: res.transaction.id.split('-')[0].toUpperCase() });
+                toast('تمت عملية الدفع بنجاح');
+                loadMe();
+            } else { 
+                playSound('error');
+                alert(res?.error || 'فشلت العملية'); 
             }
-            btn.disabled = false; btn.innerHTML = 'تأكيد وإتمام الدفع <i data-lucide="check-circle" class="w-5 h-5 inline"></i>';
+            btn.disabled = false; btn.innerHTML = 'تأكيد الدفع الآن <i data-lucide="credit-card" class="w-5 h-5"></i>';
+            lucide.createIcons();
         });
+
+        // ===== RECEIPT & NAVIGATION =====
+        function showReceipt(data) {
+            document.getElementById('re-date').textContent = new Date().toLocaleString('ar-EG');
+            document.getElementById('receipt-service').textContent = data.service_name;
+            document.getElementById('re-phone').textContent = data.number;
+            document.getElementById('re-details').textContent = data.details;
+            document.getElementById('re-val').textContent = data.amount;
+            document.getElementById('re-fees').textContent = data.fee;
+            document.getElementById('re-total').textContent = data.total;
+            document.getElementById('re-ref').textContent = data.ref;
+            document.getElementById('receipt-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+        function closeReceipt() { document.getElementById('receipt-modal').classList.add('hidden'); }
+        function printReceipt() { const content = document.getElementById('receipt-print-area').innerHTML; document.body.innerHTML = content; window.print(); location.reload(); }
+        function shareReceipt() { const text = `*إيصال دفع Dr Pay*\n\nالخدمة: ${document.getElementById('receipt-service').textContent}\nالرقم: ${document.getElementById('re-phone').textContent}\nالقيمة: ${document.getElementById('re-total').textContent} ج.م\nالمرجع: ${document.getElementById('re-ref').textContent}\n\nشكراً لك!`; window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank'); }
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+        function openView(v) { 
+            ['home','wallet','reports','settings'].forEach(id => {
+                const el = document.getElementById('view-'+id);
+                if (el) el.classList.add('hidden-view');
+            });
+            document.getElementById('view-'+v).classList.remove('hidden-view');
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('text-blue-500'));
+            document.getElementById('nav-'+v).classList.add('text-blue-500');
+            if (v === 'settings') loadMe();
+        }
+
+        function toast(msg) {
+            const t = document.createElement('div');
+            t.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold shadow-2xl z-[100] transition-all transform translate-y-10 opacity-0';
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => { t.classList.remove('translate-y-10', 'opacity-0'); }, 10);
+            setTimeout(() => { t.classList.add('translate-y-10', 'opacity-0'); setTimeout(() => t.remove(), 300); }, 3000);
+        }
     </script>
 </body>
 </html>
