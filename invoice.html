@@ -1,72 +1,332 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dr Pay - إيصال الدفع</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <style>body { font-family: 'Tajawal', sans-serif; background: #f8fafc; }</style>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Tajawal', sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 10px; }
+
+        /* Receipt Container - 48mm thermal printer */
+        .receipt {
+            width: 48mm;
+            max-width: 100%;
+            background: #fff;
+            padding: 4mm 3mm;
+            font-size: 11px;
+            color: #000;
+            line-height: 1.5;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+
+        .receipt-logo { text-align: center; margin-bottom: 3mm; }
+        .receipt-logo img { width: 28mm; height: auto; margin: 0 auto; display: block; }
+
+        .receipt-divider {
+            border: none;
+            border-top: 1px dashed #999;
+            margin: 2.5mm 0;
+        }
+
+        .receipt-title {
+            text-align: center;
+            font-size: 13px;
+            font-weight: 900;
+            margin-bottom: 1mm;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 0.8mm 0;
+            font-size: 10.5px;
+        }
+        .receipt-row .label { color: #666; font-weight: 500; }
+        .receipt-row .value { font-weight: 700; color: #000; text-align: left; direction: ltr; max-width: 55%; word-break: break-all; }
+
+        .receipt-status {
+            text-align: center;
+            font-weight: 900;
+            font-size: 14px;
+            padding: 2mm 0;
+            color: #15803d;
+        }
+        .receipt-status.failed { color: #dc2626; }
+        .receipt-status.pending { color: #ca8a04; }
+
+        .receipt-total-box {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2mm;
+            margin: 2mm 0;
+        }
+        .receipt-total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5mm 0;
+            font-size: 10.5px;
+        }
+        .receipt-total-row.main {
+            font-size: 15px;
+            font-weight: 900;
+            border-top: 1px solid #ccc;
+            padding-top: 1.5mm;
+            margin-top: 1mm;
+        }
+
+        .receipt-footer {
+            text-align: center;
+            font-size: 9px;
+            color: #888;
+            margin-top: 2mm;
+            line-height: 1.6;
+        }
+        .receipt-footer .brand { font-weight: 800; color: #333; font-size: 10px; }
+        .receipt-footer .support { font-weight: 700; color: #555; font-size: 10.5px; direction: ltr; }
+
+        .receipt-ref {
+            text-align: center;
+            font-family: monospace;
+            font-size: 10px;
+            font-weight: 700;
+            background: #f0f0f0;
+            padding: 1.5mm 2mm;
+            border-radius: 2px;
+            margin: 1.5mm 0;
+            letter-spacing: 1px;
+        }
+
+        .receipt-notice {
+            text-align: center;
+            font-size: 8.5px;
+            color: #999;
+            margin: 1.5mm 0;
+            line-height: 1.4;
+        }
+
+        /* Actions - hidden in print */
+        .actions-bar {
+            width: 48mm;
+            max-width: 100%;
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .actions-bar button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .btn-print { background: #1e293b; color: #fff; }
+        .btn-print:hover { background: #334155; }
+        .btn-share { background: #2563eb; color: #fff; }
+        .btn-share:hover { background: #3b82f6; }
+
+        .loading-state {
+            text-align: center;
+            padding: 20mm 0;
+            color: #999;
+            font-weight: 700;
+        }
+
+        /* Print Styles */
+        @media print {
+            body { background: #fff !important; padding: 0 !important; }
+            .receipt { box-shadow: none !important; width: 48mm !important; padding: 2mm 2mm !important; }
+            .actions-bar { display: none !important; }
+            @page { size: 48mm auto; margin: 0; }
+        }
+    </style>
 </head>
-<body class="p-4 sm:p-8 flex items-center justify-center min-h-screen">
-    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-sm w-full overflow-hidden" id="receipt">
-        <div class="bg-blue-600 p-6 text-center text-white relative">
-            <h1 class="text-3xl font-black tracking-widest mb-1">Dr Pay</h1>
-            <p class="text-blue-200 text-sm font-bold">إيصال معاملة إلكترونية</p>
+<body>
+
+    <div class="receipt" id="receipt">
+        <!-- Logo -->
+        <div class="receipt-logo">
+            <img src="logo/images logo.png" alt="ELDoctor Pay">
         </div>
-        <div class="p-6 space-y-4">
-            <div id="loading" class="text-center text-slate-400 font-bold py-8">جاري استخراج بيانات הפاتورة...</div>
-            <div id="invoice-details" class="hidden space-y-4">
-                <div class="flex justify-between border-b pb-2"><span class="text-slate-500">رقم الإيصال</span><span id="inv-no" class="font-bold text-slate-800 font-mono"></span></div>
-                <div class="flex justify-between border-b pb-2"><span class="text-slate-500">التاريخ</span><span id="inv-date" class="font-bold text-slate-800 text-sm"></span></div>
-                <div class="flex justify-between border-b pb-2"><span class="text-slate-500">الخدمة</span><span id="inv-srv" class="font-bold text-slate-800"></span></div>
-                <div class="flex justify-between border-b pb-2"><span class="text-slate-500">رقم العميل</span><span id="inv-phone" class="font-bold text-slate-800 font-mono"></span></div>
-                <div class="flex justify-between border-b pb-2"><span class="text-slate-500">الحالة</span><span id="inv-status" class="font-bold text-emerald-600">ناجحة</span></div>
-                <div class="mt-6 p-4 bg-slate-50 rounded-xl flex justify-between items-center border border-slate-100">
-                    <span class="text-slate-600 font-bold">المبلغ الإجمالي</span>
-                    <span class="text-2xl font-black text-blue-600 font-mono"><span id="inv-total"></span> <span class="text-sm">ج.م</span></span>
+
+        <div id="loading" class="loading-state">جاري تحميل بيانات الإيصال...</div>
+
+        <div id="invoice-content" style="display:none;">
+            <!-- Service Name -->
+            <div class="receipt-title" id="inv-service">---</div>
+
+            <hr class="receipt-divider">
+
+            <!-- Details Rows -->
+            <div class="receipt-row">
+                <span class="label">التاريخ</span>
+                <span class="value" id="inv-date">---</span>
+            </div>
+            <div class="receipt-row">
+                <span class="label">رقم الخدمة</span>
+                <span class="value" id="inv-phone">---</span>
+            </div>
+            <div class="receipt-row" id="inv-details-row">
+                <span class="label">تفاصيل</span>
+                <span class="value" id="inv-details">---</span>
+            </div>
+
+            <hr class="receipt-divider">
+
+            <!-- Status -->
+            <div class="receipt-status" id="inv-status">✔ عملية ناجحة</div>
+
+            <!-- Totals -->
+            <div class="receipt-total-box">
+                <div class="receipt-total-row">
+                    <span>القيمة</span>
+                    <span id="inv-amount">0 ج.م</span>
                 </div>
+                <div class="receipt-total-row">
+                    <span>الرسوم</span>
+                    <span id="inv-fees">0 ج.م</span>
+                </div>
+                <div class="receipt-total-row main">
+                    <span>الإجمالي</span>
+                    <span id="inv-total">0 ج.م</span>
+                </div>
+            </div>
+
+            <!-- Reference -->
+            <div style="text-align:center; font-size:9px; color:#888; margin-bottom:1mm;">مرجعي</div>
+            <div class="receipt-ref" id="inv-ref">---</div>
+
+            <hr class="receipt-divider">
+
+            <!-- Notice -->
+            <div class="receipt-notice">
+                عند البطء في الشبكة قد يستغرق<br>التنفيذ حتى 24 ساعة
+            </div>
+
+            <hr class="receipt-divider">
+
+            <!-- Footer -->
+            <div class="receipt-footer">
+                <div class="brand">تم الدفع عبر ELDoctor Pay</div>
+                <div class="support">الدعم: 01063151472</div>
             </div>
         </div>
     </div>
-    <div class="fixed bottom-6 w-full flex justify-center gap-4 px-4 hidden" id="actions">
-        <button onclick="window.print()" class="bg-slate-800 text-white font-bold py-3 px-6 rounded-full shadow-lg flex items-center gap-2"><i data-lucide="printer"></i> طباعة</button>
-        <button onclick="share()" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg flex items-center gap-2"><i data-lucide="share-2"></i> مشاركة</button>
+
+    <div class="actions-bar" id="actions" style="display:none;">
+        <button class="btn-print" onclick="window.print()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            طباعة
+        </button>
+        <button class="btn-share" onclick="shareReceipt()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            مشاركة
+        </button>
     </div>
+
     <script>
-        lucide.createIcons();
         const urlParams = new URLSearchParams(window.location.search);
         const invId = urlParams.get('id');
-        if(!invId) document.getElementById('loading').textContent = 'رقم الإيصال غير صالح';
-        else fetchInvoice();
+
+        if (!invId) {
+            document.getElementById('loading').textContent = 'رقم الإيصال غير صالح';
+        } else {
+            fetchInvoice();
+        }
 
         async function fetchInvoice() {
             try {
                 const res = await fetch(`/api?action=transactions`);
                 const data = await res.json();
-                if(data.success) {
+                if (data.success) {
                     const tx = data.transactions.find(t => t.invoice_no === invId);
-                    if(tx) {
-                        document.getElementById('loading').classList.add('hidden');
-                        document.getElementById('invoice-details').classList.remove('hidden');
-                        document.getElementById('actions').classList.remove('hidden');
-                        
-                        document.getElementById('inv-no').textContent = tx.invoice_no;
-                        document.getElementById('inv-date').textContent = new Date(tx.created_at).toLocaleString('ar-EG');
-                        document.getElementById('inv-srv').textContent = tx.service_name;
-                        document.getElementById('inv-phone').textContent = tx.customer_phone;
-                        document.getElementById('inv-total').textContent = tx.total;
-                        document.getElementById('inv-status').textContent = tx.status === 'paid' ? 'معتمدة' : (tx.status === 'pending' ? 'بانتظار التأكيد' : 'مرفوضة');
-                        if(tx.status !== 'paid') document.getElementById('inv-status').className = 'font-bold text-yellow-600';
-                    } else document.getElementById('loading').textContent = 'لم يتم العثور على الفاتورة';
+                    if (tx) {
+                        renderReceipt(tx);
+                    } else {
+                        document.getElementById('loading').textContent = 'لم يتم العثور على الفاتورة';
+                    }
                 }
-            } catch(e) { document.getElementById('loading').textContent = 'خطأ في الاتصال'; }
+            } catch (e) {
+                document.getElementById('loading').textContent = 'خطأ في الاتصال بالخادم';
+            }
         }
-        function share() {
-            if (navigator.share) navigator.share({ title: 'إيصال دفع Dr Pay', text: `إيصال معاملة رقم ${invId}`, url: window.location.href });
-            else prompt('انسخ الرابط للمشاركة:', window.location.href);
+
+        function renderReceipt(tx) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('invoice-content').style.display = 'block';
+            document.getElementById('actions').style.display = 'flex';
+
+            // Service name
+            document.getElementById('inv-service').textContent = tx.service_name;
+
+            // Date formatted
+            const d = new Date(tx.created_at);
+            const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+            document.getElementById('inv-date').textContent = dateStr;
+
+            // Phone
+            document.getElementById('inv-phone').textContent = tx.customer_phone || '---';
+
+            // Details
+            let detailsText = tx.service_name;
+            if (tx.service_data && tx.service_data.ref_number) {
+                detailsText = tx.service_data.ref_number;
+            }
+            document.getElementById('inv-details').textContent = detailsText;
+
+            // Status
+            const statusEl = document.getElementById('inv-status');
+            if (tx.status === 'paid') {
+                statusEl.textContent = '✔ عملية ناجحة';
+                statusEl.className = 'receipt-status';
+            } else if (tx.status === 'pending') {
+                statusEl.textContent = '⏳ بانتظار التأكيد';
+                statusEl.className = 'receipt-status pending';
+            } else {
+                statusEl.textContent = '✘ عملية مرفوضة';
+                statusEl.className = 'receipt-status failed';
+            }
+
+            // Amounts
+            const amount = parseFloat(tx.amount);
+            const total = parseFloat(tx.total);
+            const fees = total - amount;
+            document.getElementById('inv-amount').textContent = amount.toFixed(0) + ' ج.م';
+            document.getElementById('inv-fees').textContent = fees.toFixed(0) + ' ج.م';
+            document.getElementById('inv-total').textContent = total.toFixed(0) + ' ج.م';
+
+            // Reference: date+time based
+            const refDate = String(d.getDate()).padStart(2, '0') + String(d.getMonth() + 1).padStart(2, '0') + d.getFullYear() + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+            document.getElementById('inv-ref').textContent = refDate;
+        }
+
+        function shareReceipt() {
+            const shareData = {
+                title: 'إيصال دفع - ELDoctor Pay',
+                text: `إيصال معاملة رقم ${invId}\nتم الدفع عبر ELDoctor Pay\nالدعم: 01063151472`,
+                url: window.location.href
+            };
+            if (navigator.share) {
+                navigator.share(shareData);
+            } else {
+                // Fallback: copy to clipboard
+                const text = `إيصال دفع - ELDoctor Pay\nرقم المرجع: ${invId}\n${window.location.href}`;
+                navigator.clipboard.writeText(text).then(() => alert('تم نسخ رابط الإيصال!'));
+            }
         }
     </script>
 </body>
 </html>
-

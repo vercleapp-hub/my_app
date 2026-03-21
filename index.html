@@ -24,9 +24,9 @@
     <header class="glass-header p-5 rounded-b-[2rem] shadow-2xl shadow-blue-900/20 fixed top-0 w-full z-40 border-b border-indigo-500/30">
         <div class="flex justify-between items-center mb-5">
             <div class="flex items-center gap-3">
-                <button class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition border border-white/10 shadow-inner">
-                    <i data-lucide="menu" class="text-white w-5 h-5"></i>
-                </button>
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden border border-white/10 shadow-inner bg-white/10">
+                    <img src="logo/logo.png" alt="Dr Pay" class="w-full h-full object-contain">
+                </div>
                 <div class="flex flex-col">
                     <span class="text-white/80 font-medium text-[10px] uppercase tracking-wider mb-0.5">الدكتور باي • Dr Pay</span>
                     <span class="text-white font-extrabold text-sm tracking-wide">خيارات التحكم</span>
@@ -100,6 +100,23 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-400 mb-2">الرقم المرجعي (أو رقم التليفون المحول منه)</label>
                         <input type="text" id="dep-ref" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-blue-500 text-white outline-none font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-2">صورة إيصال التحويل <span class="text-red-400">*</span></label>
+                        <div id="dep-img-area" onclick="document.getElementById('dep-img-input').click()" class="w-full bg-slate-900 border-2 border-dashed border-slate-600 rounded-xl p-4 text-center cursor-pointer hover:border-blue-500 transition-all group">
+                            <div id="dep-img-placeholder" class="flex flex-col items-center gap-2">
+                                <div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center group-hover:bg-blue-600/20 transition">
+                                    <i data-lucide="image-plus" class="w-6 h-6 text-slate-500 group-hover:text-blue-400"></i>
+                                </div>
+                                <p class="text-slate-500 text-xs font-bold">اضغط هنا لرفع صورة التحويل</p>
+                                <p class="text-slate-600 text-[10px]">PNG, JPG - الحد الأقصى 2MB</p>
+                            </div>
+                            <div id="dep-img-preview" class="hidden">
+                                <img id="dep-img-thumb" src="" class="max-h-40 mx-auto rounded-xl border border-slate-700 shadow-lg">
+                                <p class="text-emerald-400 text-xs font-bold mt-2">✓ تم رفع الصورة بنجاح</p>
+                            </div>
+                        </div>
+                        <input type="file" id="dep-img-input" accept="image/*" class="hidden" onchange="handleDepositImage(this)">
                     </div>
                     <button type="submit" id="dep-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition text-sm flex items-center justify-center gap-2">
                         إرسال الإشعار <i data-lucide="send" class="w-4 h-4"></i>
@@ -318,9 +335,15 @@
         function openServicesModal(catName) {
             document.getElementById('modal-cat-name').textContent = catName;
             
-            // In a real DB scenario, we would filter services by Category.
-            // For now, since services don't have categories, we just show all services
-            renderServicesList(servicesList);
+            // Filter services by Category (Mapped to the 'company' column seamlessly)
+            let filteredList = [];
+            if (catName === 'كل الخدمات') {
+                filteredList = servicesList;
+            } else {
+                filteredList = servicesList.filter(s => s.company === catName);
+            }
+            
+            renderServicesList(filteredList);
 
             document.getElementById('services-modal').classList.remove('hidden');
             setTimeout(() => { 
@@ -335,17 +358,42 @@
             setTimeout(() => document.getElementById('services-modal').classList.add('hidden'), 300);
         }
 
+        // Deposit Image Handler
+        let depositImageBase64 = '';
+        function handleDepositImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) { alert('حجم الصورة يتجاوز 2MB، يرجى اختيار صورة أصغر.'); input.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                depositImageBase64 = e.target.result;
+                document.getElementById('dep-img-placeholder').classList.add('hidden');
+                document.getElementById('dep-img-preview').classList.remove('hidden');
+                document.getElementById('dep-img-thumb').src = depositImageBase64;
+                lucide.createIcons();
+            };
+            reader.readAsDataURL(file);
+        }
+
         // Deposit Setup
         document.getElementById('deposit-form').addEventListener('submit', async(e) => {
             e.preventDefault();
+            if (!depositImageBase64) { alert('يرجى رفع صورة إيصال التحويل أولاً'); return; }
             const btn = document.getElementById('dep-btn'); btn.disabled = true; btn.innerHTML = 'جاري الإرسال...';
             const res = await fetch('/api?action=deposits', {
                 method:'POST', headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({ user_id: currentUser.id, method_id: document.getElementById('dep-method').value, amount: document.getElementById('dep-amount').value, transfer_ref: document.getElementById('dep-ref').value })
+                body:JSON.stringify({ user_id: currentUser.id, method_id: document.getElementById('dep-method').value, amount: document.getElementById('dep-amount').value, transfer_ref: document.getElementById('dep-ref').value, transfer_image: depositImageBase64 })
             });
             const data = await res.json();
             const resDiv = document.getElementById('dep-res'); resDiv.classList.remove('hidden');
-            if(data.success) { resDiv.className = 'text-center text-sm font-bold mt-2 text-emerald-400'; resDiv.textContent = 'تم الإرسال لمدير النظام للمراجعة'; document.getElementById('deposit-form').reset(); }
+            if(data.success) { 
+                resDiv.className = 'text-center text-sm font-bold mt-2 text-emerald-400'; resDiv.textContent = 'تم الإرسال لمدير النظام للمراجعة'; 
+                document.getElementById('deposit-form').reset(); 
+                depositImageBase64 = '';
+                document.getElementById('dep-img-placeholder').classList.remove('hidden');
+                document.getElementById('dep-img-preview').classList.remove('hidden');
+                document.getElementById('dep-img-preview').classList.add('hidden');
+            }
             else { resDiv.className = 'text-center text-sm font-bold mt-2 text-red-400'; resDiv.textContent = data.error; }
             btn.disabled = false; btn.innerHTML = 'إرسال الإشعار <i data-lucide="send" class="w-4 h-4 inline"></i>';
         });

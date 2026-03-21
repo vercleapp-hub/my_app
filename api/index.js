@@ -38,14 +38,31 @@ export default async function handler(req, res) {
       if (user.password !== password) return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
       if (user.status !== 'active') return res.status(403).json({ error: 'حسابك محظور من الإدارة' });
       
+      // ===== DEVICE & LOCATION VERIFICATION =====
+      const { device_id, location, device_info } = req.body;
+      if (!device_id || !location) return res.status(403).json({ error: 'البيانات الأمنية والموقع الجغرافي إلزامية للمتابعة.' });
+      
+      const { data: userDevices } = await supabase.from('devices').select('id, device_fingerprint').eq('user_id', user.id);
+      let isKnown = userDevices && userDevices.some(d => d.device_fingerprint === device_id);
+      if (!isKnown) {
+          if (userDevices && userDevices.length >= 2) return res.status(403).json({ error: 'مرفوض: حسابك مربوط بالحد الأقصى المسموح به من الأجهزة (2 جهاز). يرجى مراجعة الإدارة.' });
+          await supabase.from('devices').insert({ user_id: user.id, device_fingerprint: device_id, device_info, location });
+      } else {
+          await supabase.from('devices').update({ location, device_info, created_at: new Date().toISOString() }).eq('user_id', user.id).eq('device_fingerprint', device_id);
+      }
+      // ==========================================
+
       const token = crypto.randomUUID ? crypto.randomUUID() : 'session-'+Date.now();
       await supabase.from('sessions').insert({ user_id: user.id, session_id: token });
-      await supabase.from('activity_logs').insert({ user_id: user.id, action: 'دخول', details: 'تسجيل دخول ناجح' });
+      await supabase.from('activity_logs').insert({ user_id: user.id, action: 'تحديد موقع الدخول', details: `نظام: ${device_info?.platform||'مجهول'} (RAM:${device_info?.memory||'-'}GB) إحداثيات: ${location.lat},${location.lng}` });
       return res.status(200).json({ success: true, user, token });
     }
 
     if (endpoint === 'register' && method === 'POST') {
-      const { name, phone, email, password, national_id, address, id_front_image, id_back_image } = req.body;
+      const { name, phone, email, password, national_id, address, id_front_image, id_back_image, device_id, location, device_info } = req.body;
+      
+      if (!device_id || !location) return res.status(403).json({ error: 'صلاحية الموقع الجغرافي إجبارية لأسباب أمنية.' });
+
       const { data: existing } = await supabase.from('custom_users').select('id').or(`email.eq.${email},phone.eq.${phone},national_id.eq.${national_id}`).single();
       if (existing) return res.status(400).json({ error: 'رقم الهاتف أو الرقم القومي مسجل من قبل في النظام' });
       
@@ -55,9 +72,11 @@ export default async function handler(req, res) {
       }).select().single();
       if (error) throw error;
       
+      await supabase.from('devices').insert({ user_id: user.id, device_fingerprint: device_id, device_info, location });
+
       const token = crypto.randomUUID ? crypto.randomUUID() : 'session-'+Date.now();
       await supabase.from('sessions').insert({ user_id: user.id, session_id: token });
-      await supabase.from('activity_logs').insert({ user_id: user.id, action: 'حساب جديد', details: 'تم تسجيل مستخدم جديد' });
+      await supabase.from('activity_logs').insert({ user_id: user.id, action: 'مستخدم جديد', details: `تسجيل بصلاحية أمنية، نظام: ${device_info?.platform||'مجهول'} إحداثيات: ${location.lat},${location.lng}` });
       return res.status(200).json({ success: true, user, token });
     }
 
@@ -116,9 +135,9 @@ export default async function handler(req, res) {
     }
 
     if (endpoint === 'deposits' && method === 'POST') {
-      const { user_id, method_id, amount, transfer_ref } = req.body;
+      const { user_id, method_id, amount, transfer_ref, transfer_image } = req.body;
       if (!user_id || !method_id || !amount) return res.status(400).json({ error: 'معلومات غير مكتملة' });
-      await supabase.from('deposit_requests').insert({ user_id, method_id, amount, transfer_ref });
+      await supabase.from('deposit_requests').insert({ user_id, method_id, amount, transfer_ref, transfer_image });
       await supabase.from('activity_logs').insert({ user_id, action: 'طلب إيداع', details: `تم طلب شحن بقيمة ${amount} ج.م` });
       return res.status(200).json({ success: true, message: 'تم إرسال طلب الشحن بنجاح للمراجعة' });
     }
@@ -167,6 +186,10 @@ export default async function handler(req, res) {
     if (endpoint === 'admin/users' && method === 'POST') {
       await supabase.from('custom_users').update({ status: req.body.status, role: req.body.role || 'user' }).eq('id', req.body.id);
       return res.status(200).json({ success: true });
+    }
+    if (endpoint === 'admin/devices' && method === 'DELETE') {
+      await supabase.from('devices').delete().eq('user_id', req.body.user_id);
+      return res.status(200).json({ success: true, message: 'تم إعادة تعيين أجهزة المستخدم' });
     }
 
     if (endpoint === 'admin/services' && method === 'GET') {
@@ -258,6 +281,17 @@ export default async function handler(req, res) {
       await supabase.from('invoices').delete().eq('transaction_id', id);
       await supabase.from('transactions').delete().eq('id', id);
       return res.status(200).json({ success: true });
+    }
+
+    if (endpoint === 'admin/create_admin' && method === 'POST') {
+      const { name, phone, email, password } = req.body;
+      if (!name || !phone || !email || !password) return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
+      const { data: existing } = await supabase.from('custom_users').select('id').or(`email.eq.${email},phone.eq.${phone}`).single();
+      if (existing) return res.status(400).json({ error: 'البريد الإلكتروني أو رقم الهاتف مسجل بالفعل' });
+      const { data: newAdmin, error } = await supabase.from('custom_users').insert({ name, phone, email, password, role: 'admin', status: 'active' }).select().single();
+      if (error) throw error;
+      await supabase.from('activity_logs').insert({ user_id: newAdmin.id, action: 'إنشاء أدمن جديد', details: `تم إنشاء حساب إدارة جديد: ${name}` });
+      return res.status(200).json({ success: true, user: newAdmin });
     }
 
     return res.status(404).json({ error: 'المسار غير موجود', endpoint });
