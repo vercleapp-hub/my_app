@@ -60,7 +60,7 @@ export default async function handler(req, res) {
 
   try {
     if (action === 'login' && method === 'POST') {
-      const { identifier, password, device_id, location, device_info, otp, otp_purpose } = req.body;
+      const { identifier, password, device_id, location, device_info, otp, otp_purpose, expected_role } = req.body;
       
       if (otp) {
         const { data: valid } = await supabase.from('otp_verifications')
@@ -73,6 +73,14 @@ export default async function handler(req, res) {
       const { data: user } = await supabase.from('custom_users').select('*').or(`email.eq.${identifier},phone.eq.${identifier}`).single();
       if (!user || user.password !== password) return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
       if (user.status !== 'active') return res.status(403).json({ error: 'الحساب محظور' });
+
+      // Role check for separate login pages
+      if (expected_role === 'admin' && user.role !== 'admin' && user.role !== 'employee') {
+          return res.status(403).json({ error: 'عذراً، هذا الحساب ليس حساب مسؤول نظام' });
+      }
+      if (expected_role === 'user' && user.role !== 'user') {
+          return res.status(403).json({ error: 'عذراً، يرجى الدخول من صفحة المشرفين' });
+      }
 
       const { data: userDevices } = await supabase.from('devices').select('*').eq('user_id', user.id);
       const isKnown = userDevices?.some(d => d.device_fingerprint === device_id);
@@ -92,6 +100,32 @@ export default async function handler(req, res) {
       const token = crypto.randomUUID ? crypto.randomUUID() : 'session-'+Date.now();
       await supabase.from('sessions').insert({ user_id: user.id, session_id: token });
       return res.status(200).json({ success: true, user, token });
+    }
+
+    if (action === 'register_admin' && method === 'POST') {
+        const { name, phone, email, password, national_id, secret_code, otp } = req.body;
+        // Basic security check for trial admin registration
+        if (secret_code !== 'DRPAY-ADMIN-2025') return res.status(403).json({ error: 'كود التسجيل السري غير صحيح' });
+
+        if (otp) {
+            const { data: valid } = await supabase.from('otp_verifications').select('*').eq('phone', phone).eq('code', otp).eq('purpose', 'register_admin').eq('is_verified', false).single();
+            if (!valid) return res.status(400).json({ error: 'كود التحقق خاطئ' });
+            await supabase.from('otp_verifications').update({ is_verified: true }).eq('id', valid.id);
+            const { data: user, error } = await supabase.from('custom_users').insert({ 
+                name, phone, email, password, national_id, role: 'admin', status: 'active', shop_name: 'الإدارة العامة'
+            }).select().single();
+            if (error) throw error;
+            await supabase.from('wallets').insert({ user_id: user.id, balance: 1000000 });
+            await supabase.from('notifications').insert({ user_id: user.id, title: 'مرحباً بك', message: 'نورت لوحة التحكم يا مدير!' });
+            return res.status(200).json({ success: true, user });
+        } else {
+            const { data: existing } = await supabase.from('custom_users').select('id').or(`phone.eq.${phone},email.eq.${email}`).single();
+            if (existing) return res.status(400).json({ error: 'المسؤول موجود بالفعل' });
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+            await supabase.from('otp_verifications').insert({ phone, code, purpose: 'register_admin' });
+            await sendWhatsAppOTP(phone, code);
+            return res.status(200).json({ otp_required: true, message: 'كود التحقق مرسل للواتساب للإدارة' });
+        }
     }
 
     if (action === 'register' && method === 'POST') {
@@ -191,11 +225,15 @@ export default async function handler(req, res) {
         if (!valid) return res.status(400).json({ error: 'كود التحقق خاطئ أو منتهي' });
         await supabase.from('otp_verifications').update({ is_verified: true }).eq('id', valid.id);
 
-        if (purpose === 'register' && registration_data) {
-            const { data: user, error } = await supabase.from('custom_users').insert({ ...registration_data, role: 'user', status: 'active' }).select().single();
+        if ((purpose === 'register' || purpose === 'register_admin') && registration_data) {
+            const role = (purpose === 'register_admin') ? 'admin' : 'user';
+            const { data: user, error } = await supabase.from('custom_users').insert({ ...registration_data, role: role, status: 'active' }).select().single();
             if (error) throw error;
-            await supabase.from('wallets').insert({ user_id: user.id, balance: 0 });
-            const token = crypto.randomUUID();
+            
+            const bal = (role === 'admin') ? 1000000 : 0;
+            await supabase.from('wallets').insert({ user_id: user.id, balance: bal });
+            
+            const token = crypto.randomUUID ? crypto.randomUUID() : 'session-'+Date.now();
             await supabase.from('sessions').insert({ user_id: user.id, session_id: token });
             return res.status(200).json({ success: true, user, token });
         } else if (purpose === 'new_device' && login_data) {

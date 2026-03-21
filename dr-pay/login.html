@@ -283,7 +283,7 @@
                 const res = await fetch('/api/index.js?action=login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ identifier, password, ...secPayload })
+                    body: JSON.stringify({ identifier, password, expected_role: 'user', ...secPayload })
                 });
 
                 const data = await res.json();
